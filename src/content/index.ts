@@ -50,6 +50,7 @@ import { placeNear } from './toolbar';
 
 const ORPHAN_RETRY_WINDOW_MS = 10_000;
 const ORPHAN_RETRY_DEBOUNCE_MS = 400;
+const ORPHAN_QUIET_MS = 1_500;
 const URL_POLL_MS = 1_000;
 const TOAST_MS = 5_000;
 const TOOLBAR_HALF_WIDTH = 112;
@@ -71,6 +72,7 @@ export class QuickNotesController {
   private orphanDeadline = 0;
   private orphanObserver: MutationObserver | null = null;
   private orphanTimer: number | undefined;
+  private quietTimer: number | undefined;
   private pendingWrites = 0;
   private needsResync = false;
   private toastSeq = 0;
@@ -210,8 +212,10 @@ export class QuickNotesController {
 
   /**
    * Single-page apps often render their content after the script runs. While
-   * highlights are missing, retry on DOM changes for a few seconds, then record
-   * the final orphan list (and tell the user about newly orphaned highlights).
+   * highlights are missing, retry after each burst of DOM changes; once the
+   * page has been quiet for ORPHAN_QUIET_MS (or ORPHAN_RETRY_WINDOW_MS have
+   * passed) record the final orphan list and tell the user about newly
+   * orphaned highlights. A static page therefore reports within ~1.5 s.
    */
   private startOrphanWatch(): void {
     this.stopOrphanWatch();
@@ -220,33 +224,50 @@ export class QuickNotesController {
       return;
     }
     this.orphanDeadline = Date.now() + ORPHAN_RETRY_WINDOW_MS;
-    this.orphanObserver = new MutationObserver(() => {
-      window.clearTimeout(this.orphanTimer);
-      this.orphanTimer = window.setTimeout(() => this.retryOrphans(), ORPHAN_RETRY_DEBOUNCE_MS);
-    });
-    this.orphanObserver.observe(this.root, { childList: true, subtree: true, characterData: true });
+    this.orphanObserver = new MutationObserver(() => this.onPageMutation());
+    this.observePage();
+    this.armQuietTimer();
+  }
+
+  private observePage(): void {
+    this.orphanObserver?.observe(this.root, { childList: true, subtree: true, characterData: true });
+  }
+
+  private onPageMutation(): void {
+    window.clearTimeout(this.orphanTimer);
     this.orphanTimer = window.setTimeout(() => this.retryOrphans(), ORPHAN_RETRY_DEBOUNCE_MS);
+    this.armQuietTimer();
+  }
+
+  private armQuietTimer(): void {
+    window.clearTimeout(this.quietTimer);
+    const wait = Math.max(0, Math.min(ORPHAN_QUIET_MS, this.orphanDeadline - Date.now()));
+    this.quietTimer = window.setTimeout(() => this.finishOrphanWatch(), wait);
   }
 
   private stopOrphanWatch(): void {
     this.orphanObserver?.disconnect();
     this.orphanObserver = null;
     window.clearTimeout(this.orphanTimer);
+    window.clearTimeout(this.quietTimer);
   }
 
   private retryOrphans(): void {
     if (this.paused) return;
     const orphaned = (this.page?.highlights ?? []).filter((highlight) => this.orphans.has(highlight.id));
+    // Our own wrapping must not count as a page change.
     this.orphanObserver?.disconnect();
     this.drawHighlights(orphaned);
-    if (this.orphans.size > 0 && Date.now() < this.orphanDeadline) {
-      this.orphanObserver?.observe(this.root, { childList: true, subtree: true, characterData: true });
-      window.clearTimeout(this.orphanTimer);
-      this.orphanTimer = window.setTimeout(() => this.retryOrphans(), ORPHAN_RETRY_DEBOUNCE_MS * 5);
+    if (this.orphans.size === 0 || Date.now() >= this.orphanDeadline) {
+      this.finishOrphanWatch();
       return;
     }
+    this.observePage();
+  }
+
+  private finishOrphanWatch(): void {
     this.stopOrphanWatch();
-    this.reportOrphans();
+    if (!this.paused) this.reportOrphans();
   }
 
   private reportOrphans(): void {

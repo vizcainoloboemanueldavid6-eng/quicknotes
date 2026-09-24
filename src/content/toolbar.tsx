@@ -42,7 +42,9 @@ function positionStyle(position: Anchored) {
   return {
     left: `${position.x}px`,
     top: `${position.y}px`,
-    transform: position.placement === 'above' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+    // The individual `translate` property, not `transform`: the pop-in animation
+    // animates `transform`, which would otherwise override the offset mid-animation.
+    translate: position.placement === 'above' ? '-50% -100%' : '-50% 0',
   };
 }
 
@@ -133,7 +135,6 @@ export function HighlightMenu({ position, color, hasNote, onColor, onNote, onDel
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    ref.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };

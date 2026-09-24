@@ -93,6 +93,61 @@ function isFocused(element: HTMLElement): boolean {
   return root.activeElement === element;
 }
 
+/** The selection as seen from inside the shadow root (Chrome exposes it on the root). */
+function editorSelection(editor: HTMLElement): Selection | null {
+  const root = editor.getRootNode() as ShadowRoot & { getSelection?: () => Selection | null };
+  return typeof root.getSelection === 'function' ? root.getSelection() : document.getSelection();
+}
+
+interface Caret {
+  start: number;
+  end: number;
+}
+
+function textOffset(editor: HTMLElement, node: Node, offset: number): number {
+  const range = document.createRange();
+  range.setStart(editor, 0);
+  range.setEnd(node, offset);
+  return range.toString().length;
+}
+
+/** Caret / selection as character offsets into the editor's text (survives DOM restructuring). */
+function saveCaret(editor: HTMLElement): Caret | null {
+  const selection = editorSelection(editor);
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return null;
+  return {
+    start: textOffset(editor, range.startContainer, range.startOffset),
+    end: textOffset(editor, range.endContainer, range.endOffset),
+  };
+}
+
+function pointAt(editor: HTMLElement, offset: number): { node: Node; offset: number } | null {
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let remaining = offset;
+  let last: Text | null = null;
+  for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+    if (remaining <= node.data.length) return { node, offset: remaining };
+    remaining -= node.data.length;
+    last = node;
+  }
+  return last ? { node: last, offset: last.data.length } : null;
+}
+
+/**
+ * Chrome's list commands reset the caret to the start of the line when the
+ * editor lives in a shadow root; the text itself is unchanged, so the caret is
+ * put back at the same character offsets.
+ */
+function restoreCaret(editor: HTMLElement, caret: Caret): void {
+  const selection = editorSelection(editor);
+  const start = pointAt(editor, caret.start);
+  const end = pointAt(editor, caret.end);
+  if (!selection || !start || !end) return;
+  selection.setBaseAndExtent(start.node, start.offset, end.node, end.offset);
+}
+
 type Gesture =
   | { kind: 'move'; pointerId: number; startX: number; startY: number; left: number; top: number }
   | { kind: 'resize'; pointerId: number; startX: number; startY: number; width: number; height: number };
@@ -198,7 +253,12 @@ export function StickyNoteView(props: StickyNoteViewProps) {
     const editor = editorRef.current;
     if (!editor) return;
     if (!isFocused(editor)) editor.focus({ preventScroll: true });
+    const caret = saveCaret(editor);
     exec(command);
+    const now = saveCaret(editor);
+    // Only when the caret actually moved: re-selecting would drop the pending
+    // "type in bold" state that bold/italic set on a collapsed caret.
+    if (caret && (!now || now.start !== caret.start || now.end !== caret.end)) restoreCaret(editor, caret);
     setEmpty(isEditorEmpty(editor));
     scheduleSave();
   };
