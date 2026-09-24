@@ -514,9 +514,12 @@
       (() => {
         const sheet = document.getElementById('hostile-css');
         const button = document.getElementById('toggle-hostile');
+        const banner = document.querySelector('.demo-banner');
         const apply = () => {
           const calm = location.hash === '#calm';
           sheet.disabled = calm;
+          // The banner describes the hostile styles, so it goes with them.
+          banner.hidden = calm;
           button.textContent = calm ? 'Hostile CSS: off' : 'Hostile CSS: on';
         };
         button.addEventListener('click', () => {

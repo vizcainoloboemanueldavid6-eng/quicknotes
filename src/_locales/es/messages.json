@@ -8,7 +8,7 @@
     "description": "Nombre corto de la extensión."
   },
   "extDescription": {
-    "message": "Resalta texto y pega notas adhesivas en cualquier página web. Todo se queda en tu dispositivo.",
+    "message": "Resalta texto en 4 colores y pega notas en cualquier página. Búscalas y expórtalas a Markdown. Todo se queda en tu dispositivo.",
     "description": "Descripción de la extensión (máx. 132 caracteres)."
   },
   "actionTitle": {

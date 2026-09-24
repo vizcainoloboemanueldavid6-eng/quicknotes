@@ -8,7 +8,7 @@
     "description": "Short extension name."
   },
   "extDescription": {
-    "message": "Highlight text and pin sticky notes on any web page. Everything stays on your device.",
+    "message": "Highlight text in 4 colors and pin sticky notes on any page. Search them, export to Markdown. Everything stays on your device.",
     "description": "Extension description (max 132 characters)."
   },
   "actionTitle": {

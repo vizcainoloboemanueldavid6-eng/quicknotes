@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["chrome", "node"]
   },
-  "include": ["e2e", "playwright.config.ts"]
+  "include": ["e2e", "scripts/store-assets", "playwright.config.ts", "playwright.store-assets.config.ts"]
 }

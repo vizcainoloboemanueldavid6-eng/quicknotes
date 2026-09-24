@@ -17,7 +17,8 @@
     "icons": "node scripts/icons.mjs",
     "zip": "npm run build && node scripts/zip.mjs",
     "demo": "node scripts/demo-server.mjs",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "store-assets": "npm run build && playwright test -c playwright.store-assets.config.ts"
   },
   "dependencies": {
     "preact": "10.29.8"
