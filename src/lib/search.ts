@@ -66,16 +66,14 @@ function containsAll(haystack: string, terms: readonly string[]): boolean {
 export function pageItems(page: PageData): SearchItem[] {
   const highlights = [...page.highlights]
     .sort((a, b) => a.anchor.position.start - b.anchor.position.start)
-    .map(
-      (highlight): SearchItem => ({
-        kind: 'highlight',
-        id: highlight.id,
-        color: highlight.color,
-        text: highlight.anchor.quote.exact.replace(/\s+/g, ' ').trim(),
-        orphaned: highlight.orphaned === true,
-        highlight,
-      }),
-    );
+    .map((highlight): SearchItem => ({
+      kind: 'highlight',
+      id: highlight.id,
+      color: highlight.color,
+      text: highlight.anchor.quote.exact.replace(/\s+/g, ' ').trim(),
+      orphaned: highlight.orphaned === true,
+      highlight,
+    }));
   const notes = [...page.notes]
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((note): SearchItem => ({ kind: 'note', id: note.id, color: note.color, text: htmlToText(note.html), note }));
@@ -91,7 +89,9 @@ export function listSites(pages: readonly PageData[]): Array<{ site: string; cou
   }
   return [...counts.entries()]
     .map(([site, count]) => ({ site, count }))
-    .sort((a, b) => (a.site === LOCAL_FILES_SITE ? 1 : b.site === LOCAL_FILES_SITE ? -1 : a.site.localeCompare(b.site)));
+    .sort((a, b) =>
+      a.site === LOCAL_FILES_SITE ? 1 : b.site === LOCAL_FILES_SITE ? -1 : a.site.localeCompare(b.site),
+    );
 }
 
 /** Applies the search and filters; pages keep their given order (most recently updated first). */
@@ -143,7 +143,7 @@ export function markMatches(text: string, query: string): Array<{ text: string; 
   // Fold character by character so every folded position maps back to the original.
   let folded = '';
   const origin: number[] = [];
-  for (let i = 0; i < text.length; ) {
+  for (let i = 0; i < text.length;) {
     const codePoint = text.codePointAt(i) ?? 0;
     const char = String.fromCodePoint(codePoint);
     const piece = char

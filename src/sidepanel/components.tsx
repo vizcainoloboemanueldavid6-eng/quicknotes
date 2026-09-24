@@ -2,8 +2,103 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { PALETTE } from '../lib/colors';
-import { markMatches } from '../lib/search';
+import { colorName, t } from '../lib/i18n';
+import { markMatches, type SearchItem } from '../lib/search';
 import type { Color } from '../lib/types';
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
+/**
+ * One highlight or note in a list: the whole card is a button (scroll to it,
+ * or open its page) with a separate two-step delete button beside it.
+ */
+export function ItemRow({
+  item,
+  query = '',
+  quote,
+  onOpen,
+  onDelete,
+}: {
+  item: SearchItem;
+  query?: string;
+  /** For a note attached to a highlight: the highlighted text. */
+  quote?: string;
+  onOpen?: () => void;
+  onDelete: () => void;
+}) {
+  const deleteLabel = item.kind === 'highlight' ? t('menuDelete') : t('noteDelete');
+  const body =
+    item.kind === 'highlight' ? (
+      <>
+        <span class="flex items-center gap-2 text-[12px] text-ink-soft dark:text-[#cfc8bb]">
+          <ColorDot color={item.color} />
+          {colorName(item.color)}
+          {item.orphaned && (
+            <span class="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+              {t('sidePanelOrphaned')}
+            </span>
+          )}
+        </span>
+        <span class="mt-1 line-clamp-3 block text-[13px] leading-snug">
+          “<Highlighted text={item.text} query={query} />”
+        </span>
+      </>
+    ) : (
+      <>
+        {(quote || item.note.minimized) && (
+          <span class="mb-1 flex items-center gap-2 text-[12px] italic text-ink-soft">
+            {quote && <span class="min-w-0 flex-1 truncate">{t('sidePanelNoteOn', truncate(quote, 60))}</span>}
+            {item.note.minimized && (
+              <span class="shrink-0 rounded bg-black/5 px-1.5 py-0.5 text-[11px] not-italic">
+                {t('sidePanelMinimized')}
+              </span>
+            )}
+          </span>
+        )}
+        <span class="line-clamp-4 block whitespace-pre-line text-[13px] leading-snug">
+          {item.text ? <Highlighted text={item.text} query={query} /> : t('noteEmpty')}
+        </span>
+      </>
+    );
+
+  // Notes keep their paper color in the dark theme too, so their text stays dark.
+  const cardClass = item.kind === 'highlight' ? 'qn-card' : 'rounded-xl border shadow-paper';
+  const cardStyle =
+    item.kind === 'note'
+      ? { backgroundColor: PALETTE[item.color].note, borderColor: PALETTE[item.color].edge, color: '#1C1917' }
+      : {};
+
+  return (
+    <li
+      class={`group relative flex items-stretch ${cardClass}`}
+      style={cardStyle}
+      data-testid={`item-${item.kind}`}
+      data-item-id={item.id}
+    >
+      {onOpen ? (
+        <button
+          type="button"
+          class="min-w-0 flex-1 rounded-xl p-3 pr-10 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
+          onClick={onOpen}
+        >
+          {body}
+        </button>
+      ) : (
+        <div class="min-w-0 flex-1 p-3 pr-10">{body}</div>
+      )}
+      <ConfirmButton
+        label={deleteLabel}
+        confirmLabel={t('sidePanelConfirmDelete')}
+        onConfirm={onDelete}
+        idle={<TrashIcon />}
+        class="absolute right-1.5 top-1.5 grid h-7 min-w-7 place-items-center rounded-md"
+        testId="delete-item"
+      />
+    </li>
+  );
+}
 
 export function ColorDot({ color, size = 'sm' }: { color: Color; size?: 'sm' | 'md' }) {
   return (
@@ -15,9 +110,12 @@ export function ColorDot({ color, size = 'sm' }: { color: Color; size?: 'sm' | '
   );
 }
 
-export function SectionTitle({ children, count }: { children: ComponentChildren; count?: number }) {
+export function SectionTitle({ children, count, id }: { children: ComponentChildren; count?: number; id?: string }) {
   return (
-    <h3 class="flex items-baseline gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#cfc8bb]">
+    <h3
+      id={id}
+      class="flex items-baseline gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#cfc8bb]"
+    >
       {children}
       {count !== undefined && <span class="font-normal tabular-nums text-ink-faint">({count})</span>}
     </h3>

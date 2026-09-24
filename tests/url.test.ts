@@ -45,7 +45,11 @@ describe('normalizeUrl', () => {
     ['handles file URLs', 'file:///C:/demo/article.html#top', 'file:///C:/demo/article.html'],
     ['upper-cases percent-escapes in the path', 'https://example.com/caf%c3%a9', 'https://example.com/caf%C3%A9'],
     ['encodes non-ASCII path characters', 'https://example.com/café', 'https://example.com/caf%C3%A9'],
-    ['decodes escaped unreserved characters', 'https://example.com/%7Euser/%41-b%2Ec', 'https://example.com/~user/A-b.c'],
+    [
+      'decodes escaped unreserved characters',
+      'https://example.com/%7Euser/%41-b%2Ec',
+      'https://example.com/~user/A-b.c',
+    ],
     ['keeps escaped reserved characters', 'https://example.com/a%2fb%3Fc', 'https://example.com/a%2Fb%3Fc'],
     ['removes a trailing slash after decoding', 'https://example.com/docs%2F/', 'https://example.com/docs%2F'],
     [

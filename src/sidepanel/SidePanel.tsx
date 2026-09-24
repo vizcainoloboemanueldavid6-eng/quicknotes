@@ -1,154 +1,86 @@
 /**
- * Side panel — current page: every highlight and note on the page in the active
- * tab; clicking one scrolls the page to it. Orphaned highlights (not found on
- * the page) are listed with a badge.
+ * Side panel with two views:
+ *  - "This page": highlights and notes of the page in the active tab (orphaned
+ *    highlights in their own section); clicking one scrolls the page to it.
+ *  - "All notes": every page with notes, full-text search, color and site
+ *    filters, Markdown/JSON export and JSON import.
  */
-import { useEffect, useState } from 'preact/hooks';
-import { PALETTE } from '../lib/colors';
-import { colorName, t } from '../lib/i18n';
-import { sendToBackground, type ContentMessage, type PageStatus, type Reply } from '../lib/messages';
-import { htmlToText } from '../lib/richtext';
-import { getPage, subscribe } from '../lib/storage';
-import type { PageData } from '../lib/types';
-import { isSupportedUrl, normalizeUrl } from '../lib/url';
+import { useRef, useState } from 'preact/hooks';
+import { t } from '../lib/i18n';
+import { AllNotes } from './AllNotes';
+import { ThisPage } from './ThisPage';
 
-interface Target {
-  tabId: number;
-  url: string;
-}
-
-/**
- * The page in the active tab. Its URL is visible when the user has acted on the
- * tab (activeTab) — otherwise the content script, if present, tells us.
- */
-async function currentTarget(): Promise<Target | null> {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (tab?.id === undefined) return null;
-  if (tab.url) return isSupportedUrl(tab.url) ? { tabId: tab.id, url: normalizeUrl(tab.url) } : null;
-  try {
-    const message: ContentMessage = { type: 'qn:get-status' };
-    const reply = await chrome.tabs.sendMessage<ContentMessage, Reply<PageStatus> | undefined>(tab.id, message, {
-      frameId: 0,
-    });
-    return reply?.ok ? { tabId: tab.id, url: reply.data.url } : null;
-  } catch {
-    return null;
-  }
-}
+type View = 'page' | 'all';
+const VIEWS: readonly View[] = ['page', 'all'];
 
 export function SidePanel() {
-  const [target, setTarget] = useState<Target | null>(null);
-  const [page, setPage] = useState<PageData | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [view, setView] = useState<View>('page');
+  const tabRefs = useRef<Partial<Record<View, HTMLButtonElement | null>>>({});
 
-  useEffect(() => {
-    const refresh = async () => {
-      const next = await currentTarget();
-      setTarget(next);
-      setPage(next ? await getPage(next.url) : null);
-      setLoaded(true);
-    };
-    void refresh();
-    const onActivated = () => void refresh();
-    const onUpdated = (_id: number, info: { url?: string; status?: string }) => {
-      if (info.url !== undefined || info.status === 'complete') void refresh();
-    };
-    chrome.tabs.onActivated.addListener(onActivated);
-    chrome.tabs.onUpdated.addListener(onUpdated);
-    return () => {
-      chrome.tabs.onActivated.removeListener(onActivated);
-      chrome.tabs.onUpdated.removeListener(onUpdated);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!target) return undefined;
-    return subscribe((change) => {
-      if (change.type === 'page' && change.url === target.url) setPage(change.page);
-    });
-  }, [target]);
-
-  const scrollTo = (id: string) => {
-    if (target) void sendToBackground({ type: 'qn:bg:scroll-to', tabId: target.tabId, id });
+  const onTabKey = (event: KeyboardEvent) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') return;
+    event.preventDefault();
+    const index = VIEWS.indexOf(view);
+    const next =
+      event.key === 'Home'
+        ? VIEWS[0]
+        : event.key === 'End'
+          ? VIEWS[VIEWS.length - 1]
+          : VIEWS[(index + (event.key === 'ArrowRight' ? 1 : VIEWS.length - 1)) % VIEWS.length];
+    if (!next) return;
+    setView(next);
+    tabRefs.current[next]?.focus();
   };
 
-  const highlights = [...(page?.highlights ?? [])].sort((a, b) => a.anchor.position.start - b.anchor.position.start);
-  const notes = page?.notes ?? [];
+  const tab = (id: View, label: string) => (
+    <button
+      ref={(element) => {
+        tabRefs.current[id] = element;
+      }}
+      type="button"
+      role="tab"
+      id={`tab-${id}`}
+      aria-controls={`panel-${id}`}
+      aria-selected={view === id}
+      tabIndex={view === id ? 0 : -1}
+      data-testid={`tab-${id}`}
+      class={`h-8 flex-1 rounded-md px-3 text-[13px] font-medium transition-colors ${
+        view === id
+          ? 'bg-white text-ink shadow-sm dark:bg-[#3a352f] dark:text-[#f5f1e8]'
+          : 'text-ink-soft hover:text-ink dark:text-[#cfc8bb] dark:hover:text-[#f5f1e8]'
+      }`}
+      onClick={() => setView(id)}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    <main class="flex min-h-screen flex-col gap-3 p-4">
-      <header class="flex items-center gap-2">
-        <img src="/icons/icon-32.png" width="24" height="24" alt="" />
-        <h1 class="text-[16px] font-semibold">{t('sidePanelTitle')}</h1>
+    <div class="flex min-h-screen flex-col">
+      <header class="sticky top-0 z-10 flex flex-col gap-3 border-b border-paper-line bg-paper/95 px-4 pb-3 pt-4 backdrop-blur dark:border-[#3a352f] dark:bg-[#1f1c19]/95">
+        <div class="flex items-center gap-2">
+          <img src="/icons/icon-32.png" width="22" height="22" alt="" />
+          <h1 class="text-[16px] font-semibold">{t('sidePanelTitle')}</h1>
+        </div>
+        <div
+          role="tablist"
+          aria-label={t('sidePanelViews')}
+          class="flex gap-1 rounded-lg bg-[#efe9dc] p-1 dark:bg-[#2a2622]"
+          onKeyDown={onTabKey}
+        >
+          {tab('page', t('sidePanelThisPage'))}
+          {tab('all', t('sidePanelAllNotes'))}
+        </div>
       </header>
-      <h2 class="text-[13px] font-semibold uppercase tracking-wide text-ink-soft dark:text-[#cfc8bb]">
-        {t('sidePanelThisPage')}
-      </h2>
 
-      {loaded && !target && <p class="text-[13px] text-ink-soft dark:text-[#cfc8bb]">{t('sidePanelNoPage')}</p>}
-      {loaded && target && highlights.length + notes.length === 0 && (
-        <p class="text-[13px] text-ink-soft dark:text-[#cfc8bb]">{t('sidePanelEmpty')}</p>
-      )}
-
-      {highlights.length > 0 && (
-        <section aria-label={t('popupHighlights')} class="flex flex-col gap-2">
-          <h3 class="text-[13px] font-semibold">
-            {t('popupHighlights')} ({highlights.length})
-          </h3>
-          <ul class="flex flex-col gap-2">
-            {highlights.map((highlight) => (
-              <li key={highlight.id}>
-                <button
-                  type="button"
-                  class="qn-card w-full p-3 text-left hover:border-primary"
-                  onClick={() => scrollTo(highlight.id)}
-                >
-                  <span class="flex items-center gap-2 text-[12px] text-ink-soft dark:text-[#cfc8bb]">
-                    <span
-                      class="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: PALETTE[highlight.color].dot }}
-                      aria-hidden="true"
-                    />
-                    {colorName(highlight.color)}
-                    {highlight.orphaned && (
-                      <span class="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">
-                        {t('sidePanelOrphaned')}
-                      </span>
-                    )}
-                  </span>
-                  <span class="mt-1 line-clamp-3 block text-[13px]">
-                    “{highlight.anchor.quote.exact.replace(/\s+/g, ' ').trim()}”
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {notes.length > 0 && (
-        <section aria-label={t('popupNotes')} class="flex flex-col gap-2">
-          <h3 class="text-[13px] font-semibold">
-            {t('popupNotes')} ({notes.length})
-          </h3>
-          <ul class="flex flex-col gap-2">
-            {notes.map((note) => (
-              <li key={note.id}>
-                <button
-                  type="button"
-                  class="w-full rounded-xl border p-3 text-left text-ink shadow-paper"
-                  style={{ backgroundColor: PALETTE[note.color].note, borderColor: PALETTE[note.color].edge }}
-                  onClick={() => scrollTo(note.id)}
-                >
-                  <span class="line-clamp-4 block whitespace-pre-line text-[13px]">
-                    {htmlToText(note.html) || t('noteEmpty')}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </main>
+      <main
+        id={`panel-${view}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${view}`}
+        class="flex flex-1 flex-col gap-4 px-4 py-4"
+      >
+        {view === 'page' ? <ThisPage /> : <AllNotes />}
+      </main>
+    </div>
   );
 }

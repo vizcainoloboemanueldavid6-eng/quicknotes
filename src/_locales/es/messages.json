@@ -106,12 +106,83 @@
   "sidePanelNoPage": { "message": "Abre una página web y pulsa el botón de QuickNotes para ver aquí sus notas." },
   "sidePanelEmpty": { "message": "Esta página aún no tiene resaltados ni notas. Selecciona texto para empezar." },
   "sidePanelOrphaned": { "message": "No encontrado en la página" },
+  "sidePanelViews": { "message": "Vistas" },
+  "sidePanelAllNotes": { "message": "Todas las notas" },
+  "sidePanelOrphanedTitle": { "message": "Huérfanos" },
+  "sidePanelOrphanedHelp": {
+    "message": "Estos resaltados no se encontraron en la página, probablemente porque su texto cambió. Siguen guardados hasta que los borres."
+  },
+  "sidePanelPaused": {
+    "message": "QuickNotes está en pausa en este sitio. Reactívalo desde el botón de la barra de herramientas."
+  },
+  "sidePanelUnreachable": {
+    "message": "No se pudo acceder a la página. Pulsa el botón de QuickNotes en la barra de herramientas e inténtalo de nuevo."
+  },
+  "sidePanelExportPage": { "message": "Exportar esta página" },
+  "sidePanelExportAll": { "message": "Exportar todas las páginas" },
+  "sidePanelExportMarkdown": { "message": "Markdown" },
+  "sidePanelExportJson": { "message": "JSON" },
+  "sidePanelExportPageMarkdown": {
+    "message": "Exportar $PAGE$ en Markdown",
+    "placeholders": { "page": { "content": "$1", "example": "Leer con un lápiz" } }
+  },
+  "sidePanelImport": { "message": "Importar JSON" },
+  "sidePanelImportHelp": {
+    "message": "Importar suma a lo que ya tienes: no se borra nada y, si una nota o un resaltado existe en ambos, gana la copia editada más recientemente."
+  },
+  "sidePanelImportDone": {
+    "message": "Importadas $PAGES$ página(s): $HIGHLIGHTS$ resaltado(s) y $NOTES$ nota(s).",
+    "placeholders": {
+      "pages": { "content": "$1", "example": "3" },
+      "highlights": { "content": "$2", "example": "12" },
+      "notes": { "content": "$3", "example": "4" }
+    }
+  },
+  "sidePanelImportFailed": { "message": "Este archivo no se puede importar. No se cambió nada:" },
+  "sidePanelImportTooLarge": {
+    "message": "Este archivo pesa más de 10 MB, así que no puede ser una exportación de QuickNotes."
+  },
+  "sidePanelSearch": { "message": "Buscar en notas y resaltados" },
+  "sidePanelSearchPlaceholder": { "message": "Buscar…" },
+  "sidePanelFilterColor": { "message": "Filtrar por color" },
+  "sidePanelFilterSite": { "message": "Filtrar por sitio" },
+  "sidePanelAllSites": { "message": "Todos los sitios" },
+  "sidePanelLocalFiles": { "message": "Archivos locales" },
+  "sidePanelClearFilters": { "message": "Quitar filtros" },
+  "sidePanelSummary": {
+    "message": "Páginas: $PAGES$ · Resaltados: $HIGHLIGHTS$ · Notas: $NOTES$",
+    "placeholders": {
+      "pages": { "content": "$1", "example": "3" },
+      "highlights": { "content": "$2", "example": "12" },
+      "notes": { "content": "$3", "example": "4" }
+    }
+  },
+  "sidePanelNoResults": { "message": "Nada coincide con tu búsqueda y filtros." },
+  "sidePanelNothingSaved": {
+    "message": "Aún no hay notas. Resalta texto o añade una nota en cualquier página y aparecerá aquí."
+  },
+  "sidePanelOpenPage": {
+    "message": "Abrir $PAGE$",
+    "placeholders": { "page": { "content": "$1", "example": "Leer con un lápiz" } }
+  },
+  "sidePanelDeletePage": { "message": "Borrar los resaltados y notas de esta página" },
+  "sidePanelDeleteItem": { "message": "Borrar" },
+  "sidePanelConfirmDelete": { "message": "Pulsa otra vez para borrar" },
+  "sidePanelNoteOn": {
+    "message": "Sobre «$QUOTE$»",
+    "placeholders": { "quote": { "content": "$1", "example": "el margen" } }
+  },
+  "sidePanelMinimized": { "message": "Minimizada" },
 
   "optionsTitle": { "message": "Opciones de QuickNotes" },
   "optionsDefaultColor": { "message": "Color de resaltado predeterminado" },
   "optionsShowToolbar": { "message": "Mostrar la barra al seleccionar texto" },
   "optionsShortcut": { "message": "Atajo de teclado para una nota nueva" },
   "optionsShortcutChange": { "message": "Cambiar atajos" },
+  "optionsShortcutHelp": {
+    "message": "Añade una nota adhesiva a la página en la que estás. Chrome gestiona los atajos de las extensiones: para cambiarlo o quitarlo, abre chrome://extensions/shortcuts."
+  },
+  "optionsShortcutUnset": { "message": "Sin asignar" },
   "optionsAutoRestore": { "message": "Restaurar mis notas automáticamente en todos los sitios" },
   "optionsAutoRestoreHelp": {
     "message": "Desactivado por defecto. Al activarlo, Chrome pide permiso para leer y cambiar datos en todos los sitios, para que los resaltados y las notas reaparezcan en cuanto carga la página. Nada sale nunca de tu dispositivo."

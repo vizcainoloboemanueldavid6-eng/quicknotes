@@ -104,12 +104,79 @@
   "sidePanelNoPage": { "message": "Open a web page and click the QuickNotes button to see its notes here." },
   "sidePanelEmpty": { "message": "No highlights or notes on this page yet. Select some text to start." },
   "sidePanelOrphaned": { "message": "Not found on the page" },
+  "sidePanelViews": { "message": "Views" },
+  "sidePanelAllNotes": { "message": "All notes" },
+  "sidePanelOrphanedTitle": { "message": "Orphaned" },
+  "sidePanelOrphanedHelp": {
+    "message": "These highlights could not be found on the page, probably because its text changed. They stay saved until you delete them."
+  },
+  "sidePanelPaused": { "message": "QuickNotes is paused on this site. Resume it from the toolbar button." },
+  "sidePanelUnreachable": {
+    "message": "Couldn't reach the page. Click the QuickNotes button in the toolbar, then try again."
+  },
+  "sidePanelExportPage": { "message": "Export this page" },
+  "sidePanelExportAll": { "message": "Export all pages" },
+  "sidePanelExportMarkdown": { "message": "Markdown" },
+  "sidePanelExportJson": { "message": "JSON" },
+  "sidePanelExportPageMarkdown": {
+    "message": "Export $PAGE$ as Markdown",
+    "placeholders": { "page": { "content": "$1", "example": "Reading With a Pencil" } }
+  },
+  "sidePanelImport": { "message": "Import JSON" },
+  "sidePanelImportHelp": {
+    "message": "Importing adds to what you have: nothing is deleted, and when a note or highlight exists in both, the most recently edited copy wins."
+  },
+  "sidePanelImportDone": {
+    "message": "Imported $PAGES$ page(s): $HIGHLIGHTS$ highlight(s) and $NOTES$ note(s).",
+    "placeholders": {
+      "pages": { "content": "$1", "example": "3" },
+      "highlights": { "content": "$2", "example": "12" },
+      "notes": { "content": "$3", "example": "4" }
+    }
+  },
+  "sidePanelImportFailed": { "message": "This file can't be imported. Nothing was changed:" },
+  "sidePanelImportTooLarge": { "message": "This file is larger than 10 MB, so it can't be a QuickNotes export." },
+  "sidePanelSearch": { "message": "Search notes and highlights" },
+  "sidePanelSearchPlaceholder": { "message": "Search…" },
+  "sidePanelFilterColor": { "message": "Filter by color" },
+  "sidePanelFilterSite": { "message": "Filter by site" },
+  "sidePanelAllSites": { "message": "All sites" },
+  "sidePanelLocalFiles": { "message": "Local files" },
+  "sidePanelClearFilters": { "message": "Clear filters" },
+  "sidePanelSummary": {
+    "message": "Pages: $PAGES$ · Highlights: $HIGHLIGHTS$ · Notes: $NOTES$",
+    "placeholders": {
+      "pages": { "content": "$1", "example": "3" },
+      "highlights": { "content": "$2", "example": "12" },
+      "notes": { "content": "$3", "example": "4" }
+    }
+  },
+  "sidePanelNoResults": { "message": "Nothing matches your search and filters." },
+  "sidePanelNothingSaved": {
+    "message": "No notes yet. Highlight text or add a note on any page and it will show up here."
+  },
+  "sidePanelOpenPage": {
+    "message": "Open $PAGE$",
+    "placeholders": { "page": { "content": "$1", "example": "Reading With a Pencil" } }
+  },
+  "sidePanelDeletePage": { "message": "Delete this page's highlights and notes" },
+  "sidePanelDeleteItem": { "message": "Delete" },
+  "sidePanelConfirmDelete": { "message": "Click again to delete" },
+  "sidePanelNoteOn": {
+    "message": "On “$QUOTE$”",
+    "placeholders": { "quote": { "content": "$1", "example": "the margin" } }
+  },
+  "sidePanelMinimized": { "message": "Minimized" },
 
   "optionsTitle": { "message": "QuickNotes options" },
   "optionsDefaultColor": { "message": "Default highlight color" },
   "optionsShowToolbar": { "message": "Show the toolbar when I select text" },
   "optionsShortcut": { "message": "Keyboard shortcut for a new note" },
   "optionsShortcutChange": { "message": "Change shortcuts" },
+  "optionsShortcutHelp": {
+    "message": "Adds a sticky note to the page you are on. Chrome manages extension shortcuts: to change or remove it, open chrome://extensions/shortcuts."
+  },
+  "optionsShortcutUnset": { "message": "Not set" },
   "optionsAutoRestore": { "message": "Restore my notes automatically on every site" },
   "optionsAutoRestoreHelp": {
     "message": "Off by default. When on, Chrome asks for permission to read and change data on all sites so highlights and notes can reappear as soon as a page loads. Nothing ever leaves your device."
