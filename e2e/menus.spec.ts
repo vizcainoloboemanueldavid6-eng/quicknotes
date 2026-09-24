@@ -1,10 +1,12 @@
 /**
- * The "Highlight with QuickNotes" context-menu path, the menu of an existing
- * highlight, and anchoring when the page text changes between visits.
+ * The "Highlight with QuickNotes" context-menu item and the Alt+N command, the
+ * menu of an existing highlight, and anchoring when the page text changes
+ * between visits.
  *
- * Playwright cannot open Chrome's native context menu, so the menu item's
- * handler is exercised through the same background message it uses
- * (qn:bg:highlight-selection, with Chrome's selectionText as fallback).
+ * Playwright cannot open Chrome's native context menu or press a browser-level
+ * shortcut, so the service worker fires the extension's real listeners itself
+ * with the events' `dispatch()` — the same code path as a user's click, with
+ * the arguments Chrome passes (OnClickData and the tab).
  */
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -15,35 +17,55 @@ test.use({ variant: 'hosts' });
 
 const ARTICLE = fileURLToPath(new URL('../demo/article.html', import.meta.url));
 
+interface DispatchableEvent {
+  dispatch(...args: unknown[]): void;
+}
+
 test('context-menu highlighting, the highlight menu, and a page that changed', async ({ harness }) => {
   const page = await harness.openDemo();
   const popup = await harness.openPopup(page);
   await waitForQuickNotes(page);
   await popup.close();
-  const manager = await harness.extensionPage('src/options/index.html');
-  const tabId = await manager.evaluate(
-    async (url) => (await chrome.tabs.query({ url: `${url}*` }))[0]?.id ?? -1,
-    harness.demoUrl,
-  );
-  const menuClick = (text?: string, color?: string) =>
-    manager.evaluate((message) => chrome.runtime.sendMessage(message), {
-      type: 'qn:bg:highlight-selection',
-      tabId,
-      ...(text ? { text } : {}),
-      ...(color ? { color } : {}),
-    });
+  // The worker is looked up for each call: Chrome may stop and restart it between them.
+  const worker = () => harness.worker();
+
+  /** Fires the context menu's onClicked listener, as a click on "Highlight with QuickNotes" does. */
+  const menuClick = async (selectionText?: string) =>
+    (await worker()).evaluate(
+      async ({ url, selectionText }) => {
+        const [tab] = await chrome.tabs.query({ url: `${url}*` });
+        if (!tab) throw new Error('demo tab not found');
+        const info = {
+          menuItemId: 'quicknotes-highlight',
+          editable: false,
+          pageUrl: tab.url,
+          ...(selectionText ? { selectionText } : {}),
+        };
+        (chrome.contextMenus.onClicked as unknown as DispatchableEvent).dispatch(info, tab);
+      },
+      { url: harness.demoUrl, selectionText },
+    );
+  const setDefaultColor = async (color: string) =>
+    (await worker())
+      .evaluate(async (defaultColor) => {
+        const { settings } = await chrome.storage.sync.get('settings');
+        await chrome.storage.sync.set({ settings: { ...(settings as object), defaultColor } });
+      }, color)
+      .then(() => page.waitForTimeout(300)); // let the page's storage listener catch up
   await page.bringToFront();
 
-  // --- Context menu: the live selection… -----------------------------------
+  // --- Context menu: the live selection, in the default color… ------------------
   await selectText(page, PASSAGES.yellow.selector, PASSAGES.yellow.text);
-  expect(await menuClick(undefined, 'yellow')).toEqual({ ok: true });
+  await menuClick(PASSAGES.yellow.text);
   await expect(page.locator('quicknotes-mark[data-qn-color="yellow"]')).toHaveText([PASSAGES.yellow.text]);
   // …or Chrome's selectionText when the selection is gone, if it is unique…
+  await setDefaultColor('pink');
   await page.evaluate(() => window.getSelection()?.removeAllRanges());
-  expect(await menuClick(PASSAGES.pink.text, 'pink')).toEqual({ ok: true });
+  await menuClick(PASSAGES.pink.text);
   await expect(page.locator('quicknotes-mark[data-qn-color="pink"]')).toHaveText([PASSAGES.pink.text]);
+  await setDefaultColor('yellow');
   // …but never a guess between repeated passages.
-  expect(await menuClick('one idea per note')).toEqual({ ok: false, error: 'no-selection' });
+  await menuClick('one idea per note');
   await expect(page.locator('[data-qn="toast"]')).toContainText('Select some text on the page first.');
   await expect.poll(async () => (await harness.demoRecord())?.highlights.length).toBe(2);
 
@@ -112,6 +134,18 @@ test('context-menu highlighting, the highlight menu, and a page that changed', a
     .poll(async () => (await harness.demoRecord())?.highlights.filter((highlight) => highlight.orphaned).length)
     .toBe(0);
   await last.close();
+
+  // --- The Alt+N command: a new note on the active page ----------------------------
+  const notesBefore = (await harness.demoRecord())?.notes.length ?? 0;
+  await page.bringToFront();
+  await (
+    await worker()
+  ).evaluate(async (url) => {
+    const [tab] = await chrome.tabs.query({ url: `${url}*` });
+    (chrome.commands.onCommand as unknown as DispatchableEvent).dispatch('new-note', tab);
+  }, harness.demoUrl);
+  await expect(page.locator('[data-qn="note"]')).toHaveCount(notesBefore + 1);
+  await expect.poll(async () => (await harness.demoRecord())?.notes.length).toBe(notesBefore + 1);
 
   expect(await harness.allErrors()).toEqual([]);
 });

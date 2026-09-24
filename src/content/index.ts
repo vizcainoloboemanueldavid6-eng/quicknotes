@@ -821,7 +821,7 @@ export class QuickNotesController {
         this.createNote();
         return ok(undefined);
       case 'qn:highlight-selection':
-        return this.highlightSelection(message.color ?? this.settings.defaultColor, false, message.text);
+        return this.highlightSelection(this.settings.defaultColor, false, message.text);
       case 'qn:scroll-to':
         return this.scrollToItem(message.id);
     }

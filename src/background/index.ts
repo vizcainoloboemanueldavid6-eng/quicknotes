@@ -169,6 +169,12 @@ async function refreshMenuState(): Promise<void> {
   chrome.contextMenus.update(MENU_ID, { enabled }, () => void chrome.runtime.lastError);
 }
 
+/**
+ * "Highlight with QuickNotes": highlights the page's selection in the default
+ * color, or — if the selection is gone by now — the text Chrome reports, when
+ * it occurs exactly once. (The end-to-end suite fires this very listener with
+ * chrome.contextMenus.onClicked.dispatch.)
+ */
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== MENU_ID || tab?.id === undefined) return;
   void runOnTab(tab.id, info.pageUrl || tab.url, {
@@ -181,6 +187,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Keyboard command
 // ---------------------------------------------------------------------------
 
+/** Alt+N (or whatever the user chose): a new note on the active page. */
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command !== 'new-note') return;
   void (async () => {
@@ -311,12 +318,6 @@ async function handle(message: BackgroundMessage): Promise<Reply<unknown>> {
     }
     case 'qn:bg:new-note':
       return runOnTab(message.tabId, await tabUrl(message.tabId), { type: 'qn:new-note' });
-    case 'qn:bg:highlight-selection':
-      return runOnTab(message.tabId, await tabUrl(message.tabId), {
-        type: 'qn:highlight-selection',
-        ...(message.color ? { color: message.color } : {}),
-        ...(message.text ? { text: message.text } : {}),
-      });
     case 'qn:bg:scroll-to':
       return runOnTab(message.tabId, await tabUrl(message.tabId), { type: 'qn:scroll-to', id: message.id });
     case 'qn:bg:sync-auto-restore':
