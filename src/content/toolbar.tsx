@@ -6,7 +6,8 @@
  *    it, attach/show a note, or delete it.
  * Both are positioned in document coordinates inside the shadow-root layer.
  */
-import { useEffect, useRef } from 'preact/hooks';
+import type { RefObject } from 'preact';
+import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { PALETTE } from '../lib/colors';
 import { colorName, t } from '../lib/i18n';
 import { COLORS, type Color } from '../lib/types';
@@ -24,18 +25,42 @@ const TOOLBAR_GAP = 8;
 const TOOLBAR_HEIGHT = 40;
 const EDGE_MARGIN = 8;
 
-/** Chooses where to show a popover for a viewport rectangle (e.g. a selection). */
+/** Width of the viewport without its vertical scrollbar. */
+function viewportWidth(win: Window): number {
+  return win.document.documentElement.clientWidth || win.innerWidth;
+}
+
+/** Keeps a horizontal center at least EDGE_MARGIN + halfWidth away from both viewport edges. */
+export function clampCenter(viewportX: number, halfWidth: number, width: number): number {
+  return Math.min(
+    Math.max(viewportX, halfWidth + EDGE_MARGIN),
+    Math.max(halfWidth + EDGE_MARGIN, width - halfWidth - EDGE_MARGIN),
+  );
+}
+
+/**
+ * Chooses where to show a popover for a viewport rectangle (e.g. a selection).
+ * `halfWidth` is only an estimate; the popover corrects itself once it has been
+ * measured (useKeepInView), since its width depends on the language.
+ */
 export function placeNear(rect: DOMRect, halfWidth: number, win: Window = window): Anchored {
   const roomAbove = rect.top >= TOOLBAR_HEIGHT + TOOLBAR_GAP;
-  const viewportX = Math.min(
-    Math.max(rect.left + rect.width / 2, halfWidth + EDGE_MARGIN),
-    Math.max(halfWidth + EDGE_MARGIN, win.innerWidth - halfWidth - EDGE_MARGIN),
-  );
+  const viewportX = clampCenter(rect.left + rect.width / 2, halfWidth, viewportWidth(win));
   return {
     x: viewportX + win.scrollX,
     y: (roomAbove ? rect.top - TOOLBAR_GAP : rect.bottom + TOOLBAR_GAP) + win.scrollY,
     placement: roomAbove ? 'above' : 'below',
   };
+}
+
+/** Re-centers a rendered popover with its real width so it never crosses the window's edges. */
+function useKeepInView(ref: RefObject<HTMLDivElement>, position: Anchored): void {
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const x = clampCenter(position.x - window.scrollX, element.offsetWidth / 2, viewportWidth(window));
+    element.style.left = `${x + window.scrollX}px`;
+  }, [ref, position.x, position.y, position.placement]);
 }
 
 function positionStyle(position: Anchored) {
@@ -95,8 +120,11 @@ export interface SelectionToolbarProps {
 
 export function SelectionToolbar({ position, defaultColor, onHighlight, onAddNote }: SelectionToolbarProps) {
   const ordered = [defaultColor, ...COLORS.filter((color) => color !== defaultColor)];
+  const ref = useRef<HTMLDivElement>(null);
+  useKeepInView(ref, position);
   return (
     <div
+      ref={ref}
       role="toolbar"
       aria-label={t('toolbarLabel')}
       data-qn="toolbar"
@@ -133,6 +161,7 @@ export interface HighlightMenuProps {
 
 export function HighlightMenu({ position, color, hasNote, onColor, onNote, onDelete, onClose }: HighlightMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
+  useKeepInView(ref, position);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

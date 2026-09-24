@@ -53,7 +53,8 @@ const ORPHAN_RETRY_DEBOUNCE_MS = 400;
 const ORPHAN_QUIET_MS = 1_500;
 const URL_POLL_MS = 1_000;
 const TOAST_MS = 5_000;
-const TOOLBAR_HALF_WIDTH = 112;
+/** First estimates only: the toolbar and menu re-center themselves with their measured width. */
+const TOOLBAR_HALF_WIDTH = 120;
 const MENU_HALF_WIDTH = 140;
 
 function prefersReducedMotion(): boolean {
@@ -500,22 +501,40 @@ export class QuickNotesController {
   }
 
   private bindPageEvents(): void {
-    this.listen(document, 'mouseup', (event) => {
-      if (this.isFromUi(event)) return;
-      window.setTimeout(() => this.updateToolbar(), 0);
-    });
-    this.listen(document, 'keyup', (event) => {
-      if (this.isFromUi(event)) return;
-      if (event.key === 'Escape') {
-        this.setState({ toolbar: null, menu: null });
-      } else if (event.shiftKey || event.key === 'Shift' || ((event.ctrlKey || event.metaKey) && event.key === 'a')) {
-        this.updateToolbar();
-      }
-    });
-    this.listen(document, 'mousedown', (event) => {
-      if (this.isFromUi(event)) return;
-      if (this.state.toolbar || this.state.menu) this.setState({ toolbar: null, menu: null });
-    });
+    // Mouse and key events are observed on window in the capture phase: many
+    // sites stop them from bubbling (widgets, frameworks that handle events at
+    // their root), which would otherwise hide the selection toolbar there.
+    this.listen(
+      window,
+      'mouseup',
+      (event) => {
+        if (this.isFromUi(event)) return;
+        window.setTimeout(() => this.updateToolbar(), 0);
+      },
+      true,
+    );
+    this.listen(
+      window,
+      'keyup',
+      (event) => {
+        if (this.isFromUi(event)) return;
+        if (event.key === 'Escape') {
+          this.setState({ toolbar: null, menu: null });
+        } else if (event.shiftKey || event.key === 'Shift' || ((event.ctrlKey || event.metaKey) && event.key === 'a')) {
+          this.updateToolbar();
+        }
+      },
+      true,
+    );
+    this.listen(
+      window,
+      'mousedown',
+      (event) => {
+        if (this.isFromUi(event)) return;
+        if (this.state.toolbar || this.state.menu) this.setState({ toolbar: null, menu: null });
+      },
+      true,
+    );
     this.listen(document, 'selectionchange', () => {
       if (!this.state.toolbar) return;
       const selection = window.getSelection();
