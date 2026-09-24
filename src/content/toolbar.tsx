@@ -100,7 +100,7 @@ export function SelectionToolbar({ position, defaultColor, onHighlight, onAddNot
       role="toolbar"
       aria-label={t('toolbarLabel')}
       data-qn="toolbar"
-      class="qn-pop absolute flex items-center gap-0.5 whitespace-nowrap rounded-full border border-paper-line bg-paper py-1 pl-1.5 pr-1 shadow-paper-lg"
+      class="qn-pop absolute flex items-center gap-0.5 whitespace-nowrap rounded-full border border-paper-line bg-paper py-1 pl-1.5 pr-1 shadow-soft-lg"
       style={positionStyle(position)}
       onMouseDown={keepSelection}
     >
@@ -149,7 +149,7 @@ export function HighlightMenu({ position, color, hasNote, onColor, onNote, onDel
       role="toolbar"
       aria-label={t('menuLabel')}
       data-qn="highlight-menu"
-      class="qn-pop absolute flex items-center gap-0.5 whitespace-nowrap rounded-full border border-paper-line bg-paper py-1 pl-1.5 pr-1 shadow-paper-lg"
+      class="qn-pop absolute flex items-center gap-0.5 whitespace-nowrap rounded-full border border-paper-line bg-paper py-1 pl-1.5 pr-1 shadow-soft-lg"
       style={positionStyle(position)}
     >
       {COLORS.map((option) => (

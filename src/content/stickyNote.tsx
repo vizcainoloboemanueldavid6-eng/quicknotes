@@ -396,7 +396,7 @@ export function StickyNoteView(props: StickyNoteViewProps) {
         aria-label={t('noteLabel')}
         data-qn="note"
         data-qn-note-id={note.id}
-        class={`absolute flex h-[34px] max-w-[240px] touch-none select-none items-center gap-1 rounded-full border pl-3 pr-1 shadow-paper ${flash ? 'qn-flash' : ''}`}
+        class={`absolute flex h-[34px] max-w-[240px] touch-none select-none items-center gap-1 rounded-full border pl-3 pr-1 shadow-soft ${flash ? 'qn-flash' : ''}`}
         style={containerStyle}
         {...gestureHandlers('move')}
       >
@@ -423,7 +423,7 @@ export function StickyNoteView(props: StickyNoteViewProps) {
       aria-label={t('noteLabel')}
       data-qn="note"
       data-qn-note-id={note.id}
-      class={`absolute flex flex-col overflow-hidden rounded-[10px] border shadow-paper ${flash ? 'qn-flash' : ''}`}
+      class={`absolute flex flex-col overflow-hidden rounded-[10px] border shadow-soft ${flash ? 'qn-flash' : ''}`}
       style={{ ...containerStyle, width: `${size.width}px`, height: `${size.height}px` }}
       onPointerDown={() => onActivate(note.id)}
     >

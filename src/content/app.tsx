@@ -105,7 +105,7 @@ export function ContentApp({ state, actions }: { state: UiState; actions: UiActi
               <div
                 key={toast.id}
                 data-qn="toast"
-                class="qn-pop flex items-start gap-2 rounded-lg border border-paper-line bg-paper py-2.5 pl-3.5 pr-1.5 text-[13px] text-ink shadow-paper-lg"
+                class="qn-pop flex items-start gap-2 rounded-lg border border-paper-line bg-paper py-2.5 pl-3.5 pr-1.5 text-[13px] text-ink shadow-soft-lg"
               >
                 <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
                 <span class="flex-1">{toast.message}</span>

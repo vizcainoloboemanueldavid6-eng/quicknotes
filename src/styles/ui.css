@@ -39,6 +39,6 @@
   }
 
   .qn-card {
-    @apply rounded-xl border border-paper-line bg-white shadow-paper dark:border-[#3a352f] dark:bg-[#2a2622];
+    @apply rounded-xl border border-paper-line bg-white shadow-soft dark:border-[#3a352f] dark:bg-[#2a2622];
   }
 }

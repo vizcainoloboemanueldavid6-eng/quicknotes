@@ -88,6 +88,7 @@ test('page CSS does not reach the injected UI, and the UI CSS does not reach the
       noteBorderStyle: b.borderTopStyle,
       noteBoxSizing: b.boxSizing,
       noteBackground: b.backgroundColor,
+      noteShadow: b.boxShadow,
       editorDisplay: e.display,
       editorBackground: e.backgroundColor,
       editorColor: e.color,
@@ -105,6 +106,8 @@ test('page CSS does not reach the injected UI, and the UI CSS does not reach the
     noteBorderStyle: 'solid',
     noteBoxSizing: 'border-box',
     noteBackground: 'rgb(255, 243, 176)',
+    // The soft dark "paper" shadow (a near-white one would be invisible on light pages).
+    noteShadow: expect.stringContaining('rgba(28, 25, 23, 0.22)') as unknown as string,
     editorDisplay: 'block',
     editorBackground: 'rgba(0, 0, 0, 0)',
     editorColor: INK,

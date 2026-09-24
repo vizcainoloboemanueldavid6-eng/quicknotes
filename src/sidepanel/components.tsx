@@ -64,7 +64,7 @@ export function ItemRow({
     );
 
   // Notes keep their paper color in the dark theme too, so their text stays dark.
-  const cardClass = item.kind === 'highlight' ? 'qn-card' : 'rounded-xl border shadow-paper';
+  const cardClass = item.kind === 'highlight' ? 'qn-card' : 'rounded-xl border shadow-soft';
   const cardStyle =
     item.kind === 'note'
       ? { backgroundColor: PALETTE[item.color].note, borderColor: PALETTE[item.color].edge, color: '#1C1917' }
