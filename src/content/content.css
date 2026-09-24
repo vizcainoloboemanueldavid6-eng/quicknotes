@@ -1,0 +1,129 @@
+@config "../../tailwind.content.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  .qn-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    pointer-events: none;
+    font-family: theme('fontFamily.sans');
+    font-size: 14px;
+    line-height: 1.45;
+    color: theme('colors.ink.DEFAULT');
+    -webkit-font-smoothing: antialiased;
+    text-align: left;
+    direction: ltr;
+  }
+
+  .qn-layer > * {
+    pointer-events: auto;
+  }
+
+  .qn-layer button {
+    cursor: pointer;
+  }
+
+  .qn-layer :focus-visible {
+    outline: 2px solid theme('colors.primary.dark');
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Rich-text editor inside a sticky note. */
+  .qn-editor {
+    outline: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    cursor: text;
+  }
+
+  .qn-editor:focus-visible {
+    outline: none;
+  }
+
+  .qn-editor[data-empty='true']::before {
+    content: attr(data-placeholder);
+    color: theme('colors.ink.faint');
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .qn-editor ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin: 2px 0;
+  }
+
+  .qn-editor ol {
+    list-style: decimal;
+    padding-left: 22px;
+    margin: 2px 0;
+  }
+
+  .qn-editor b,
+  .qn-editor strong {
+    font-weight: 700;
+  }
+
+  .qn-editor i,
+  .qn-editor em {
+    font-style: italic;
+  }
+
+  .qn-editor p {
+    margin: 0 0 4px;
+  }
+
+  @keyframes qn-pop {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes qn-flash {
+    0%,
+    100% {
+      box-shadow:
+        0 1px 2px rgba(28, 25, 23, 0.08),
+        0 10px 24px -8px rgba(28, 25, 23, 0.22);
+    }
+    30%,
+    70% {
+      box-shadow:
+        0 0 0 4px #f2b705,
+        0 10px 24px -8px rgba(28, 25, 23, 0.22);
+    }
+  }
+
+  .qn-pop {
+    animation: qn-pop 120ms ease-out;
+  }
+
+  .qn-flash {
+    animation: qn-flash 1.2s ease-in-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .qn-pop {
+      animation: none;
+    }
+
+    .qn-flash {
+      animation: none;
+      box-shadow: 0 0 0 4px #f2b705;
+    }
+  }
+}
