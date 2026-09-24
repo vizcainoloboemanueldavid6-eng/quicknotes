@@ -32,7 +32,7 @@ import {
   type StickyNote,
 } from '../lib/types';
 import { isPausedUrl, normalizeUrl } from '../lib/url';
-import { buildTextIndex, describeRange, resolveAnchor } from './anchor';
+import { buildTextIndex, describeRange, findText, rangeFromOffsets, resolveAnchor } from './anchor';
 import { ContentApp, type UiActions, type UiState } from './app';
 import {
   ID_ATTRIBUTE,
@@ -80,6 +80,8 @@ export class QuickNotesController {
   private resizeTimer: number | undefined;
   private readonly ready: Promise<void>;
   private markReady: () => void = () => undefined;
+  private readonly disposers: Array<() => void> = [];
+  private disposed = false;
 
   private state: UiState = {
     toolbar: null,
@@ -123,9 +125,13 @@ export class QuickNotesController {
   async start(): Promise<void> {
     // Listen first so a ping sent right after injection is answered.
     chrome.runtime.onMessage.addListener(this.onMessage);
+    this.disposers.push(() => chrome.runtime.onMessage.removeListener(this.onMessage));
+    // Marks left by a previous instance (the extension was updated or reloaded
+    // while the page stayed open) would otherwise be wrapped a second time.
+    removeAllMarks(document);
     this.ui = createShadowUi();
     this.bindPageEvents();
-    subscribe((change) => this.onStoreChange(change));
+    this.disposers.push(subscribe((change) => this.onStoreChange(change)));
 
     try {
       const [settings, page] = await Promise.all([getSettings(), getPage(this.url)]);
@@ -138,7 +144,61 @@ export class QuickNotesController {
       this.render();
       this.markReady();
     }
-    window.setInterval(() => void this.checkNavigation(), URL_POLL_MS);
+    const poll = window.setInterval(() => {
+      if (this.isAlive()) void this.checkNavigation();
+      else this.dispose();
+    }, URL_POLL_MS);
+    this.disposers.push(() => window.clearInterval(poll));
+  }
+
+  /**
+   * False once the extension has been updated, reloaded or removed: this copy
+   * of the script is orphaned and every chrome.* call would throw.
+   */
+  isAlive(): boolean {
+    try {
+      return !this.disposed && chrome.runtime?.id !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Stops listening to the page. The UI host is left for the next instance to replace. */
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stopOrphanWatch();
+    for (const dispose of this.disposers.splice(0)) {
+      try {
+        dispose();
+      } catch {
+        // The extension context may already be gone.
+      }
+    }
+    if (this.ui) render(null, this.ui.layer);
+  }
+
+  private listen<K extends keyof DocumentEventMap>(
+    target: Document,
+    type: K,
+    handler: (event: DocumentEventMap[K]) => void,
+  ): void;
+  private listen<K extends keyof WindowEventMap>(
+    target: Window,
+    type: K,
+    handler: (event: WindowEventMap[K]) => void,
+    capture?: boolean,
+  ): void;
+  private listen(target: EventTarget, type: string, handler: (event: never) => void, capture = false): void {
+    const wrapped = (event: Event) => {
+      if (!this.isAlive()) {
+        this.dispose();
+        return;
+      }
+      (handler as (event: Event) => void)(event);
+    };
+    target.addEventListener(type, wrapped, capture);
+    this.disposers.push(() => target.removeEventListener(type, wrapped, capture));
   }
 
   private get root(): HTMLElement {
@@ -146,7 +206,7 @@ export class QuickNotesController {
   }
 
   private render(): void {
-    if (!this.ui) return;
+    if (!this.ui || this.disposed) return;
     render(h(ContentApp, { state: { ...this.state }, actions: this.actions }), this.ui.layer);
   }
 
@@ -435,11 +495,11 @@ export class QuickNotesController {
   }
 
   private bindPageEvents(): void {
-    document.addEventListener('mouseup', (event) => {
+    this.listen(document, 'mouseup', (event) => {
       if (this.isFromUi(event)) return;
       window.setTimeout(() => this.updateToolbar(), 0);
     });
-    document.addEventListener('keyup', (event) => {
+    this.listen(document, 'keyup', (event) => {
       if (this.isFromUi(event)) return;
       if (event.key === 'Escape') {
         this.setState({ toolbar: null, menu: null });
@@ -447,19 +507,21 @@ export class QuickNotesController {
         this.updateToolbar();
       }
     });
-    document.addEventListener('mousedown', (event) => {
+    this.listen(document, 'mousedown', (event) => {
       if (this.isFromUi(event)) return;
       if (this.state.toolbar || this.state.menu) this.setState({ toolbar: null, menu: null });
     });
-    document.addEventListener('selectionchange', () => {
+    this.listen(document, 'selectionchange', () => {
       if (!this.state.toolbar) return;
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed) this.setState({ toolbar: null });
     });
-    window.addEventListener('click', (event) => this.onPageClick(event), true);
-    window.addEventListener('resize', () => this.scheduleMeasure());
+    this.listen(window, 'click', (event) => this.onPageClick(event), true);
+    this.listen(window, 'resize', () => this.scheduleMeasure());
     if (typeof ResizeObserver !== 'undefined') {
-      new ResizeObserver(() => this.scheduleMeasure()).observe(this.root);
+      const observer = new ResizeObserver(() => this.scheduleMeasure());
+      observer.observe(this.root);
+      this.disposers.push(() => observer.disconnect());
     }
   }
 
@@ -498,12 +560,12 @@ export class QuickNotesController {
   // Highlights
   // -------------------------------------------------------------------------
 
-  private highlightSelection(color: Color, withNote: boolean): Reply {
+  private highlightSelection(color: Color, withNote: boolean, fallbackText?: string): Reply {
     if (this.paused) {
       this.toast(t('toastPaused'));
       return fail('paused');
     }
-    const range = this.selectedRange();
+    const range = this.selectedRange() ?? (fallbackText ? this.uniqueTextRange(fallbackText) : null);
     if (!range) {
       this.toast(t('toastSelectText'));
       return fail('no-selection');
@@ -529,6 +591,14 @@ export class QuickNotesController {
     if (withNote) this.createNote({ highlightId: highlight.id, near: rect });
     else this.render();
     return ok(undefined);
+  }
+
+  /** A range for `text` when it occurs exactly once on the page. */
+  private uniqueTextRange(text: string): Range | null {
+    const index = buildTextIndex(this.root);
+    const matches = findText(index, text);
+    const only = matches.length === 1 ? matches[0] : undefined;
+    return only ? rangeFromOffsets(index, only.start, only.end, document) : null;
   }
 
   private recolorHighlight(id: string, color: Color): void {
@@ -727,7 +797,7 @@ export class QuickNotesController {
         this.createNote();
         return ok(undefined);
       case 'qn:highlight-selection':
-        return this.highlightSelection(message.color ?? this.settings.defaultColor, false);
+        return this.highlightSelection(message.color ?? this.settings.defaultColor, false, message.text);
       case 'qn:scroll-to':
         return this.scrollToItem(message.id);
     }
@@ -739,8 +809,10 @@ declare global {
 }
 
 // Idempotent bootstrap: executeScript may run this file again in the same tab
-// (and the registered script may already have run); only the first run starts.
-if (!globalThis.__quicknotes__) {
+// (and the registered script may already have run); only the first run starts,
+// unless the previous instance belongs to an extension version that is gone.
+if (!globalThis.__quicknotes__?.isAlive()) {
+  globalThis.__quicknotes__?.dispose();
   const controller = new QuickNotesController();
   globalThis.__quicknotes__ = controller;
   void controller.start();

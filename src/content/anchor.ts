@@ -366,6 +366,22 @@ function resolveByXPath(anchor: Anchor, index: TextIndex, doc: Document, needle:
  * Finds where an anchor is on the page now. Returns text offsets into
  * `index.text`, or null when the highlight is orphaned.
  */
+/**
+ * Every occurrence of `text` in the page, compared whitespace-insensitively,
+ * as raw text offsets (at most MAX_CANDIDATES).
+ */
+export function findText(index: TextIndex, text: string): Array<{ start: number; end: number }> {
+  const needle = collapseWhitespace(text).trim();
+  if (!needle) return [];
+  const norm = normalized(index);
+  const found: Array<{ start: number; end: number }> = [];
+  for (let at = norm.text.indexOf(needle); at !== -1; at = norm.text.indexOf(needle, at + 1)) {
+    found.push({ start: norm.map[at] as number, end: (norm.map[at + needle.length - 1] as number) + 1 });
+    if (found.length >= MAX_CANDIDATES) break;
+  }
+  return found;
+}
+
 export function resolveAnchor(anchor: Anchor, index: TextIndex, doc: Document): Resolution | null {
   const needle = collapseWhitespace(anchor.quote.exact).trim();
   if (!needle) return null;

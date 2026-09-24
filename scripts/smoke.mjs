@@ -211,6 +211,36 @@ async function main() {
     });
     const viaMenu = await bg({ type: 'qn:bg:highlight-selection', tabId, color: 'pink' });
     check('highlight-selection message works', viaMenu?.ok === true, JSON.stringify(viaMenu));
+    // Context menu fallback: selection gone, but the menu's selectionText is unique on the page.
+    await page.evaluate(() => window.getSelection().removeAllRanges());
+    const viaText = await bg({
+      type: 'qn:bg:highlight-selection',
+      tabId,
+      color: 'green',
+      text: 'why people love them',
+    });
+    const fallbackMark = await page.locator('quicknotes-mark[data-qn-color="green"]').allTextContents();
+    check(
+      'context-menu text fallback highlights a unique quote',
+      viaText?.ok === true && fallbackMark.join('') === 'why people love them',
+      JSON.stringify(viaText),
+    );
+    const ambiguous = await bg({ type: 'qn:bg:highlight-selection', tabId, text: 'answer is 42' });
+    check(
+      '…but refuses an ambiguous one',
+      ambiguous?.ok === false && ambiguous.error === 'no-selection',
+      JSON.stringify(ambiguous),
+    );
+    const fallbackId = await page.locator('quicknotes-mark[data-qn-color="green"]').first().getAttribute('data-qn-id');
+    await page.locator('quicknotes-mark[data-qn-color="green"]').first().click();
+    await page.getByRole('button', { name: 'Delete highlight' }).click();
+    await page.waitForTimeout(300);
+    const afterDelete = await storage();
+    check(
+      'deleting a highlight from its menu removes it from page and storage',
+      (await page.locator('quicknotes-mark[data-qn-color="green"]').count()) === 0 &&
+        !(afterDelete[pageKey]?.highlights ?? []).some((h) => h.id === fallbackId),
+    );
 
     // --- Sticky note ------------------------------------------------------
     const created = await bg({ type: 'qn:bg:new-note', tabId });

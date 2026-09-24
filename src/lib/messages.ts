@@ -16,14 +16,18 @@ export type ContentMessage =
   | { type: 'qn:ping' }
   | { type: 'qn:get-status' }
   | { type: 'qn:new-note' }
-  | { type: 'qn:highlight-selection'; color?: Color }
+  /**
+   * `text` is the context menu's selectionText: used when the live selection is
+   * gone, and only if that text occurs exactly once on the page.
+   */
+  | { type: 'qn:highlight-selection'; color?: Color; text?: string }
   | { type: 'qn:scroll-to'; id: string };
 
 export type BackgroundMessage =
   | { type: 'qn:bg:inject'; tabId: number }
   | { type: 'qn:bg:get-status'; tabId: number }
   | { type: 'qn:bg:new-note'; tabId: number }
-  | { type: 'qn:bg:highlight-selection'; tabId: number; color?: Color }
+  | { type: 'qn:bg:highlight-selection'; tabId: number; color?: Color; text?: string }
   | { type: 'qn:bg:scroll-to'; tabId: number; id: string }
   | { type: 'qn:bg:open-side-panel'; windowId?: number; tabId?: number }
   | { type: 'qn:bg:sync-auto-restore' };

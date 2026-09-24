@@ -137,7 +137,10 @@ async function refreshMenuState(): Promise<void> {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== MENU_ID || tab?.id === undefined) return;
-  void runOnTab(tab.id, info.pageUrl || tab.url, { type: 'qn:highlight-selection' });
+  void runOnTab(tab.id, info.pageUrl || tab.url, {
+    type: 'qn:highlight-selection',
+    ...(info.selectionText ? { text: info.selectionText } : {}),
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -258,6 +261,7 @@ async function handle(message: BackgroundMessage): Promise<Reply<unknown>> {
       return runOnTab(message.tabId, await tabUrl(message.tabId), {
         type: 'qn:highlight-selection',
         ...(message.color ? { color: message.color } : {}),
+        ...(message.text ? { text: message.text } : {}),
       });
     case 'qn:bg:scroll-to':
       return runOnTab(message.tabId, await tabUrl(message.tabId), { type: 'qn:scroll-to', id: message.id });

@@ -5,6 +5,7 @@ import {
   buildTextIndex,
   describeOffsets,
   describeRange,
+  findText,
   rangeFromOffsets,
   resolveAnchor,
   resolveXPath,
@@ -197,6 +198,20 @@ describe('resolveAnchor', () => {
     const anchor = anchorFor('abc');
     const blank: Anchor = { ...anchor, quote: { ...anchor.quote, exact: '   ' } };
     expect(resolveAnchor(blank, buildTextIndex(document.body), document)).toBeNull();
+  });
+});
+
+describe('findText', () => {
+  it('finds every occurrence, whitespace-insensitively', () => {
+    const index = setBody('<p>Hello   big\n world.</p><p>Hello big world again.</p>');
+    const found = findText(index, 'Hello big world');
+    expect(found).toHaveLength(2);
+    expect(found.map(({ start, end }) => index.text.slice(start, end))).toEqual([
+      'Hello   big\n world',
+      'Hello big world',
+    ]);
+    expect(findText(index, '   ')).toEqual([]);
+    expect(findText(index, 'absent')).toEqual([]);
   });
 });
 
