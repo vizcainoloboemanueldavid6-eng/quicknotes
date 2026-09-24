@@ -20,7 +20,9 @@ function locales(): Plugin {
       .map((lang) => ({ lang, path: join(localesDir, lang, 'messages.json') }));
 
   return {
-    name: 'quicknotes:locales',
+    // The "crx:" prefix is deliberate: during `vite dev` CRXJS writes dist/ with
+    // a separate Rollup build that only runs plugins whose name starts with it.
+    name: 'crx:quicknotes-locales',
     buildStart() {
       for (const { path } of files()) this.addWatchFile(path);
     },
