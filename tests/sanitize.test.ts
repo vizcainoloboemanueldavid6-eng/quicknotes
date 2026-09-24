@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { estimatedInsertLength } from '../src/content/stickyNote';
 import { ALLOWED_TAGS, MAX_NOTE_HTML_LENGTH, sanitizeHtml } from '../src/lib/sanitize';
 
 describe('sanitizeHtml', () => {
@@ -63,5 +64,39 @@ describe('sanitizeHtml', () => {
     const out = sanitizeHtml(huge);
     expect(out.length).toBeLessThanOrEqual(MAX_NOTE_HTML_LENGTH);
     expect(out).not.toContain('<b>');
+  });
+
+  it('over the cap, keeps as much text as fits, with its line breaks', () => {
+    // 3,000 lines of ~40 characters: about 150,000 characters of HTML.
+    const lines = Array.from({ length: 3000 }, (_, i) => `Line ${i + 1} of a long pasted note & more`);
+    const html = lines.map((line) => `<div>${line.replace('&', '&amp;')}</div>`).join('');
+    expect(html.length).toBeGreaterThan(MAX_NOTE_HTML_LENGTH);
+
+    const out = sanitizeHtml(html);
+    expect(out.length).toBeLessThanOrEqual(MAX_NOTE_HTML_LENGTH);
+    // Nearly the whole budget is used (not a fifth of it, as before).
+    expect(out.length).toBeGreaterThan(MAX_NOTE_HTML_LENGTH - 100);
+    const kept = out.split('<br>');
+    expect(kept[0]).toBe('Line 1 of a long pasted note &amp; more');
+    expect(kept.length).toBeGreaterThan(2000);
+    // Every complete line is kept in order; only the last one may be cut.
+    kept.slice(0, -1).forEach((line, i) => expect(line).toBe(`Line ${i + 1} of a long pasted note &amp; more`));
+    // Never cut in the middle of an entity.
+    expect(out).not.toMatch(/&(?:a|am|amp|l|lt|g|gt)?$/);
+  });
+
+  it('with maxLength: Infinity, measures without cutting (what the editor saves)', () => {
+    const html = `<div>${'x'.repeat(MAX_NOTE_HTML_LENGTH)}</div>`;
+    expect(sanitizeHtml(html, { maxLength: Infinity })).toBe(html);
+  });
+});
+
+describe('estimatedInsertLength (paste guard of the note editor)', () => {
+  it('counts escapes, line breaks and runs of spaces generously', () => {
+    expect(estimatedInsertLength('plain')).toBe(5);
+    expect(estimatedInsertLength('a & b')).toBe('a &amp; b'.length);
+    expect(estimatedInsertLength('<tag>')).toBe('&lt;tag&lt;'.length);
+    expect(estimatedInsertLength('one\ntwo')).toBe(7 + '<div></div>'.length);
+    expect(estimatedInsertLength('a  b')).toBeGreaterThanOrEqual('a&nbsp; b'.length);
   });
 });

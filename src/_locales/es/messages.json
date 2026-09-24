@@ -76,6 +76,9 @@
   },
   "toastSaveFailed": { "message": "No se pudo guardar el cambio. Puede que el almacenamiento esté lleno." },
   "toastCannotHighlight": { "message": "Esa selección no se puede resaltar." },
+  "toastNoteTooLong": {
+    "message": "Esta nota llegó a su longitud máxima. Acórtala para conservar tus últimos cambios."
+  },
   "dismiss": { "message": "Cerrar" },
 
   "popupHighlights": { "message": "Resaltados" },

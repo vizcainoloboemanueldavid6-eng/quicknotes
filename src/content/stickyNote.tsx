@@ -4,13 +4,17 @@
  * bulleted and numbered lists; Ctrl+B / Ctrl+I). Stored HTML always goes
  * through the whitelist sanitizer. Position is kept as a percentage of the
  * document's width and height; size in pixels.
+ *
+ * A note never grows past MAX_NOTE_HTML_LENGTH: typing and pasting that would
+ * cross it are refused with a message, and an edit that is still too long when
+ * it is saved is not saved (the message says so) rather than cut short.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { PALETTE } from '../lib/colors';
 import { colorName, t } from '../lib/i18n';
 import { htmlToText } from '../lib/richtext';
-import { sanitizeHtml } from '../lib/sanitize';
+import { MAX_NOTE_HTML_LENGTH, sanitizeHtml } from '../lib/sanitize';
 import {
   COLORS,
   NOTE_MAX_SIZE,
@@ -50,6 +54,8 @@ export interface StickyNoteViewProps {
   onDelete: (id: string) => void;
   onActivate: (id: string) => void;
   onAutoFocused: () => void;
+  /** The note reached its maximum length (an edit was refused or not saved). */
+  onTooLong: () => void;
 }
 
 const SAVE_DELAY_MS = 500;
@@ -86,6 +92,18 @@ function isEditorEmpty(element: HTMLElement): boolean {
 /** document.execCommand is deprecated but remains the only way to edit a contenteditable's selection with undo support. */
 function exec(command: 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList' | 'insertText', value?: string) {
   document.execCommand(command, false, value);
+}
+
+/**
+ * How many characters of HTML inserting `text` as plain text will add, a little
+ * generously: escaped characters, a <div></div> per line break (Chrome's
+ * insertText) and an &nbsp; per space in runs of spaces.
+ */
+export function estimatedInsertLength(text: string): number {
+  const escaped = text.replace(/&/g, '&amp;').replace(/[<>]/g, '&lt;').length;
+  const lineBreaks = text.match(/\n/g)?.length ?? 0;
+  const spaceRuns = (text.match(/ {2,}/g) ?? []).reduce((sum, run) => sum + run.length, 0);
+  return escaped + lineBreaks * '<div></div>'.length + spaceRuns * '&nbsp;'.length;
 }
 
 function isFocused(element: HTMLElement): boolean {
@@ -153,13 +171,14 @@ type Gesture =
   | { kind: 'resize'; pointerId: number; startX: number; startY: number; width: number; height: number };
 
 export function StickyNoteView(props: StickyNoteViewProps) {
-  const { note, docSize, quote, zIndex, autoFocus, flash, onUpdate, onDelete, onActivate, onAutoFocused } = props;
+  const { note, docSize, quote, zIndex, autoFocus, flash, onUpdate, onDelete, onActivate, onAutoFocused, onTooLong } =
+    props;
   const editorRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const gesture = useRef<Gesture | null>(null);
   const deleting = useRef(false);
-  const latest = useRef({ note, onUpdate });
-  latest.current = { note, onUpdate };
+  const latest = useRef({ note, onUpdate, onTooLong });
+  latest.current = { note, onUpdate, onTooLong };
   const [dragPosition, setDragPosition] = useState<{ left: number; top: number } | null>(null);
   const [dragSize, setDragSize] = useState<NoteSize | null>(null);
   const [empty, setEmpty] = useState(() => htmlToText(note.html) === '');
@@ -176,8 +195,13 @@ export function StickyNoteView(props: StickyNoteViewProps) {
     saveTimer.current = undefined;
     const editor = editorRef.current;
     if (!editor || deleting.current) return;
-    const html = sanitizeHtml(editor.innerHTML);
-    const { note: current, onUpdate: update } = latest.current;
+    const html = sanitizeHtml(editor.innerHTML, { maxLength: Infinity });
+    const { note: current, onUpdate: update, onTooLong: tooLong } = latest.current;
+    if (html.length > MAX_NOTE_HTML_LENGTH) {
+      // Never store a shortened copy: keep the last saved version and say so.
+      tooLong();
+      return;
+    }
     if (html !== current.html) update(current.id, { html });
   };
 
@@ -190,11 +214,29 @@ export function StickyNoteView(props: StickyNoteViewProps) {
   useLayoutEffect(() => {
     const editor = editorRef.current;
     if (!editor || isFocused(editor)) return;
-    if (sanitizeHtml(editor.innerHTML) !== note.html) {
+    if (sanitizeHtml(editor.innerHTML, { maxLength: Infinity }) !== note.html) {
       editor.innerHTML = note.html;
     }
     setEmpty(isEditorEmpty(editor));
   }, [note.html, note.minimized]);
+
+  // Typing, dropping or formatting past the length limit is refused (deleting
+  // and undo stay possible). A listener, not a Preact prop: `beforeinput` is
+  // not reliably mapped by name.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return undefined;
+    const onBeforeInput = (event: InputEvent) => {
+      const type = event.inputType;
+      if (type.startsWith('delete') || type.startsWith('history')) return;
+      if (editor.innerHTML.length >= MAX_NOTE_HTML_LENGTH) {
+        event.preventDefault();
+        latest.current.onTooLong();
+      }
+    };
+    editor.addEventListener('beforeinput', onBeforeInput);
+    return () => editor.removeEventListener('beforeinput', onBeforeInput);
+  }, [note.minimized]);
 
   useEffect(() => {
     if (!autoFocus || note.minimized) return;
@@ -238,6 +280,10 @@ export function StickyNoteView(props: StickyNoteViewProps) {
       event.preventDefault();
       exec('italic');
       scheduleSave();
+    } else if (mod && !event.altKey && (event.key === 'u' || event.key === 'U')) {
+      // Chrome's built-in underline: notes have no underline (the sanitizer
+      // would drop it on save), so do not show one that will not last.
+      event.preventDefault();
     } else if (event.key === 'Escape') {
       event.currentTarget.blur();
     }
@@ -246,7 +292,13 @@ export function StickyNoteView(props: StickyNoteViewProps) {
   const onPaste = (event: JSX.TargetedClipboardEvent<HTMLDivElement>) => {
     event.preventDefault();
     const text = event.clipboardData?.getData('text/plain') ?? '';
-    if (text) exec('insertText', text);
+    if (!text) return;
+    if (event.currentTarget.innerHTML.length + estimatedInsertLength(text) > MAX_NOTE_HTML_LENGTH) {
+      // Refuse the whole paste (the clipboard still has it) rather than keep part of it.
+      onTooLong();
+      return;
+    }
+    exec('insertText', text);
   };
 
   const format = (command: 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList') => {

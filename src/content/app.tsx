@@ -42,6 +42,7 @@ export interface UiActions {
   deleteNote: (id: string) => void;
   activateNote: (id: string) => void;
   noteFocused: () => void;
+  noteTooLong: () => void;
   dismissToast: (id: number) => void;
 }
 
@@ -63,6 +64,7 @@ export function ContentApp({ state, actions }: { state: UiState; actions: UiActi
           onDelete={actions.deleteNote}
           onActivate={actions.activateNote}
           onAutoFocused={actions.noteFocused}
+          onTooLong={actions.noteTooLong}
         />
       ))}
 

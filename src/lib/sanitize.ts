@@ -11,6 +11,7 @@
  * from text nodes and freshly created whitelisted elements — nothing from the
  * input is ever re-used, so no attribute or unexpected node can survive.
  */
+import { htmlToText } from './richtext';
 
 export const ALLOWED_TAGS: ReadonlySet<string> = new Set([
   'b',
@@ -48,8 +49,13 @@ const DROP_WITH_CONTENT: ReadonlySet<string> = new Set([
   'canvas',
 ]);
 
-/** Upper bound for stored note HTML; anything longer is cut down to plain text. */
-export const MAX_NOTE_HTML_LENGTH = 50_000;
+/**
+ * Upper bound for stored note HTML (about 100,000 characters of text). The note
+ * editor never saves past it: it refuses the typing or paste that would cross it
+ * and tells the user (see stickyNote.tsx), so this cap only ever shortens
+ * imported or hand-made data — and even then keeps the text and its line breaks.
+ */
+export const MAX_NOTE_HTML_LENGTH = 100_000;
 const MAX_DEPTH = 40;
 
 const TEXT_NODE = 3;
@@ -96,7 +102,42 @@ function escapeText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function sanitizeHtml(html: string): string {
+/**
+ * Sanitized HTML that is over the limit, as plain text with <br> line breaks
+ * (one per paragraph or list item, list markers kept): as much of the text as
+ * fits in `limit` characters, cut at a character boundary, never mid-entity.
+ */
+function plainTextWithin(html: string, limit: number): string {
+  const out: string[] = [];
+  let length = 0;
+  for (const line of htmlToText(html).split('\n')) {
+    const separator = out.length > 0 ? '<br>'.length : 0;
+    const escaped = escapeText(line);
+    if (length + separator + escaped.length <= limit) {
+      out.push(escaped);
+      length += separator + escaped.length;
+      continue;
+    }
+    let room = limit - length - separator;
+    let cut = '';
+    for (const char of line) {
+      const piece = escapeText(char);
+      if (piece.length > room) break;
+      cut += piece;
+      room -= piece.length;
+    }
+    if (cut) out.push(cut);
+    break;
+  }
+  return out.join('<br>');
+}
+
+export interface SanitizeOptions {
+  /** Longest result allowed (default MAX_NOTE_HTML_LENGTH); `Infinity` measures without cutting. */
+  maxLength?: number;
+}
+
+export function sanitizeHtml(html: string, { maxLength = MAX_NOTE_HTML_LENGTH }: SanitizeOptions = {}): string {
   if (!html) return '';
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const out = document.implementation.createHTMLDocument('');
@@ -107,10 +148,5 @@ export function sanitizeHtml(html: string): string {
   const result = container.innerHTML.trim();
   if (/^(?:<(?:div|p)>(?:<br>)?<\/(?:div|p)>|<br>)$/.test(result)) return '';
 
-  if (result.length > MAX_NOTE_HTML_LENGTH) {
-    // Worst case every character becomes "&amp;" (5 chars), so a fifth always fits.
-    const text = (container.textContent ?? '').slice(0, MAX_NOTE_HTML_LENGTH / 5);
-    return escapeText(text);
-  }
-  return result;
+  return result.length > maxLength ? plainTextWithin(result, maxLength) : result;
 }

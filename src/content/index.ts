@@ -109,6 +109,7 @@ export class QuickNotesController {
     noteFocused: () => {
       this.state.focusNoteId = null;
     },
+    noteTooLong: () => this.toast(t('toastNoteTooLong')),
     dismissToast: (id) => this.setState({ toasts: this.state.toasts.filter((toast) => toast.id !== id) }),
   };
 

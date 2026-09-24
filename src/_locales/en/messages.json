@@ -76,6 +76,7 @@
   },
   "toastSaveFailed": { "message": "Your change could not be saved. Storage may be full." },
   "toastCannotHighlight": { "message": "That selection can't be highlighted." },
+  "toastNoteTooLong": { "message": "This note is at its maximum length. Shorten it to keep your latest changes." },
   "dismiss": { "message": "Dismiss" },
 
   "popupHighlights": { "message": "Highlights" },
