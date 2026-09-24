@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "icons": "node scripts/icons.mjs",
     "zip": "npm run build && node scripts/zip.mjs",
-    "smoke": "npm run build && node scripts/smoke.mjs"
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "demo": "node scripts/demo-server.mjs"
   },
   "dependencies": {
     "preact": "10.29.8"
