@@ -101,6 +101,9 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'chrome116',
     sourcemap: false,
+    // Chrome 116+ supports <link rel="modulepreload"> natively; Vite's polyfill
+    // would only add a fetch() of the extension's own chunks to every page.
+    modulePreload: { polyfill: false },
   },
   server: {
     port: 4320,

@@ -1,7 +1,24 @@
 /** The shipped build loads cleanly, with exactly the permissions it declares. */
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from './harness';
 
 test.use({ variant: 'default' });
+
+test('the build contains no network or remote-code APIs', async () => {
+  const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+  const files = (await readdir(dist, { recursive: true })).filter((file) => /\.(js|html)$/.test(file));
+  expect(files.length).toBeGreaterThan(5);
+  const offenders: string[] = [];
+  for (const file of files) {
+    const code = await readFile(join(dist, file), 'utf8');
+    const match =
+      /\bfetch\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource|importScripts|\beval\(|new Function\(/.exec(code);
+    if (match) offenders.push(`${file}: ${match[0]}`);
+  }
+  expect(offenders).toEqual([]);
+});
 
 test('loads without errors or warnings, asking only for the declared permissions', async ({ harness }) => {
   const worker = await harness.worker();
