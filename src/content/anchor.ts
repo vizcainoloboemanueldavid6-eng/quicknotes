@@ -8,7 +8,8 @@
  *   3. the character position in the page text (tie-breaker only).
  *
  * Everything is computed on a *text index*: the concatenated text of every text
- * node under the root, skipping script/style/etc. QuickNotes' own highlight
+ * node under the root, skipping script/style/etc., SVG/MathML and editable
+ * regions (see isSkippedElement). QuickNotes' own highlight
  * elements only split text nodes, so they never change the indexed text — which
  * is what lets anchors survive highlights being added or removed around them.
  *
@@ -73,12 +74,33 @@ interface NormalizedText {
   map: Int32Array;
 }
 
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+
+/** True for an element the user edits (contenteditable="", "true" or "plaintext-only"). */
+function isEditingHost(element: Element): boolean {
+  const value = element.getAttribute('contenteditable');
+  return value !== null && value.toLowerCase() !== 'false';
+}
+
+/**
+ * Elements whose text is left out of the index, with everything inside them:
+ *  - non-prose elements (SKIPPED_TAGS) and QuickNotes' own host;
+ *  - SVG and MathML (any element outside the HTML namespace): wrapping their
+ *    text in an HTML element makes the renderer drop it, so a chart label would
+ *    vanish;
+ *  - editable regions of the page (rich-text editors, comment boxes): a mark
+ *    inside them would end up in whatever the site saves.
+ */
+function isSkippedElement(element: Element): boolean {
+  return SKIPPED_TAGS.has(element.localName) || element.namespaceURI !== HTML_NAMESPACE || isEditingHost(element);
+}
+
 export function buildTextIndex(root: Node): TextIndex {
   const doc = root.ownerDocument ?? (root as Document);
   const walker = doc.createTreeWalker(root, SHOW_ELEMENT | SHOW_TEXT, {
     acceptNode(node: Node) {
       if (node.nodeType === ELEMENT_NODE) {
-        return SKIPPED_TAGS.has((node as Element).localName) ? FILTER_REJECT : FILTER_SKIP;
+        return isSkippedElement(node as Element) ? FILTER_REJECT : FILTER_SKIP;
       }
       return FILTER_ACCEPT;
     },

@@ -113,9 +113,9 @@ export function wrapOffsets(index: TextIndex, start: number, end: number, id: st
 }
 
 export function marksFor(id: string, root: ParentNode = document): HTMLElement[] {
-  // Quoted attribute value: only backslashes and double quotes need escaping.
-  const value = id.replace(/["\\]/g, '\\$&');
-  return Array.from(root.querySelectorAll<HTMLElement>(`${HIGHLIGHT_TAG}[${ID_ATTRIBUTE}="${value}"]`));
+  // Compared as a plain string, never built into a selector: whatever an id
+  // contains (quotes, newlines…) cannot break the lookup.
+  return allMarks(root).filter((mark) => mark.getAttribute(ID_ATTRIBUTE) === id);
 }
 
 export function allMarks(root: ParentNode = document): HTMLElement[] {

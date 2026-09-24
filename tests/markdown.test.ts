@@ -240,6 +240,25 @@ describe('JSON export and import', () => {
     });
   });
 
+  it('rejects ids with characters an export never contains (newlines, quotes, spaces)', () => {
+    const page = makePage('https://example.com/', {
+      highlights: [makeHighlight('bad\nid')],
+      notes: [makeNote('n"1', { highlightId: 'x y' }), makeNote('ok_id-2')],
+    });
+    const result = parseJsonImport(JSON.stringify({ format: 'quicknotes', version: 1, pages: [page] }));
+    expect(result).toEqual({
+      ok: false,
+      errors: [
+        'pages[0].highlights[0].id: expected an id of 1 to 128 letters, digits, "-" or "_"',
+        'pages[0].notes[0].id: expected an id of 1 to 128 letters, digits, "-" or "_"',
+        'pages[0].notes[0].highlightId: expected an id of 1 to 128 letters, digits, "-" or "_"',
+      ],
+    });
+    // A real id (crypto.randomUUID) passes.
+    const fine = makePage('https://example.com/', { notes: [makeNote(crypto.randomUUID())] });
+    expect(parseJsonImport(JSON.stringify({ format: 'quicknotes', version: 1, pages: [fine] })).ok).toBe(true);
+  });
+
   it('sanitizes note HTML, normalizes URLs, clamps positions and merges duplicate pages', () => {
     const file = {
       format: 'quicknotes',

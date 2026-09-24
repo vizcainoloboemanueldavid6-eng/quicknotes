@@ -13,7 +13,7 @@ import {
   xpathOf,
   type TextIndex,
 } from '../src/content/anchor';
-import { marksFor, removeAllMarks, removeMarks, wrapOffsets } from '../src/content/highlighter';
+import { marksFor, recolorMarks, removeAllMarks, removeMarks, wrapOffsets } from '../src/content/highlighter';
 import type { Anchor } from '../src/lib/types';
 
 function setBody(html: string): TextIndex {
@@ -63,6 +63,52 @@ describe('text index', () => {
     expect(index.text).toBe('Visible bold text.End');
     expect(index.nodes).toHaveLength(4);
     expect(index.starts).toEqual([0, 8, 12, 18]);
+  });
+
+  it('leaves out SVG and MathML text, which an HTML mark would make disappear', () => {
+    const index = setBody(
+      '<p>Before the chart.</p><svg width="400" height="60"><text x="10" y="30">Chart label</text>' +
+        '<foreignObject><p>inside svg</p></foreignObject></svg>' +
+        '<math><mi>x</mi><mo>=</mo><mn>2</mn></math><p>After the chart.</p>',
+    );
+    expect(index.text).toBe('Before the chart.After the chart.');
+  });
+
+  it('leaves out editable regions of the page, but not contenteditable="false" ones', () => {
+    const index = setBody(
+      '<p>Read me.</p><div contenteditable="true">draft <b>text</b></div><div contenteditable>more</div>' +
+        '<div contenteditable="plaintext-only">plain</div><div contenteditable="false">fixed</div><p>End.</p>',
+    );
+    expect(index.text).toBe('Read me.fixedEnd.');
+  });
+
+  it('a highlight across a chart and an editor wraps neither of them', () => {
+    const html =
+      '<p id="before">Text before the chart caption.</p>' +
+      '<svg width="400" height="60"><text id="label" x="10" y="30">Chart label inside SVG</text></svg>' +
+      '<div id="editor" contenteditable="true">editable page content</div>' +
+      '<p id="after">Text after the chart caption.</p>';
+    const index = setBody(html);
+    const range = document.createRange();
+    const before = document.getElementById('before')?.firstChild as Text;
+    const after = document.getElementById('after')?.firstChild as Text;
+    range.setStart(before, 0);
+    range.setEnd(after, 'Text after'.length);
+    const anchor = describeRange(range, index);
+    expect(anchor?.quote.exact).toBe('Text before the chart caption.Text after');
+    if (!anchor) return;
+    const marks = wrapOffsets(index, anchor.position.start, anchor.position.end, 'h', 'yellow');
+    expect(marks.map((mark) => mark.textContent)).toEqual(['Text before the chart caption.', 'Text after']);
+    expect(document.getElementById('label')?.innerHTML).toBe('Chart label inside SVG');
+    expect(document.getElementById('editor')?.innerHTML).toBe('editable page content');
+  });
+
+  it('a selection that ends inside an editor stops before it', () => {
+    const index = setBody('<p id="p">Plain text here.</p><div id="ce" contenteditable="true">typed words</div>');
+    const range = document.createRange();
+    range.setStart(document.getElementById('p')?.firstChild as Text, 6);
+    range.setEnd(document.getElementById('ce')?.firstChild as Text, 5);
+    expect(describeRange(range, index)?.quote.exact).toBe('text here.');
   });
 });
 
@@ -282,11 +328,15 @@ describe('highlight elements', () => {
     expect(second.start.xpath).toBe('/html[1]/body[1]/article[1]/p[1]');
     expect(second.start.offset).toBe('One two three four '.length);
 
-    // Still resolves by XPath on a clean copy of the page with the quote edited.
-    setBody('<article><p>One two three four fiv six.</p></article>');
-    const clean = buildTextIndex(document.body);
-    const reanchored = describeOffsets(clean, 19, 22);
-    expect(reanchored?.quote.exact).toBe('fiv');
+    // On a clean copy of the page (no marks) with the quote edited ("five" →
+    // "fiv"), the saved anchor still resolves through its XPath fallback:
+    // "fiv" is 75 % similar to "five", exactly the threshold.
+    const clean = setBody('<article><p>One two three four fiv six.</p></article>');
+    const found = resolveAnchor(second, clean, document);
+    expect(found?.method).toBe('xpath');
+    expect(found && clean.text.slice(found.start, found.end).trim()).toBe('fiv');
+    // A fresh anchor on the clean page describes the same element and offset.
+    expect(describeOffsets(clean, 19, 22)?.start).toEqual(second.start);
   });
 
   it('removing a highlight restores the original DOM', () => {
@@ -299,6 +349,19 @@ describe('highlight elements', () => {
     expect(document.body.innerHTML).toBe(original);
     const p = document.querySelector('p') as HTMLElement;
     expect(p.childNodes).toHaveLength(4); // text nodes were merged back
+  });
+
+  it('finds, recolors and removes marks whatever their id contains', () => {
+    const index = setBody('<p>one two three</p>');
+    const odd = 'line\nbreak "quoted" \\ ]';
+    wrapOffsets(index, 0, 3, odd, 'yellow');
+    wrapOffsets(index, 8, 13, 'plain', 'blue');
+    expect(marksFor(odd).map((mark) => mark.textContent)).toEqual(['one']);
+    recolorMarks(odd, 'pink');
+    expect(marksFor(odd)[0]?.getAttribute('data-qn-color')).toBe('pink');
+    removeMarks(odd);
+    expect(marksFor(odd)).toHaveLength(0);
+    expect(marksFor('plain')).toHaveLength(1);
   });
 
   it('removes only the requested highlight, or all of them', () => {
