@@ -22,12 +22,14 @@ interface Target {
 }
 
 /**
- * The page in the active tab. Its URL is visible when the user has acted on the
- * tab (activeTab) or granted the optional host permission — otherwise the
- * content script, if it runs there, tells us.
+ * The page in the active tab of the panel's own window (a side panel belongs to
+ * one browser window; `currentWindow` is that window, whichever one has the
+ * focus). Its URL is visible when the user has acted on the tab (activeTab) or
+ * granted the optional host permission — otherwise the content script, if it
+ * runs there, tells us.
  */
 async function currentTarget(): Promise<Target | null> {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) return null;
   if (tab.url) {
     return isSupportedUrl(tab.url) ? { tabId: tab.id, url: normalizeUrl(tab.url), title: tab.title ?? '' } : null;
@@ -63,19 +65,27 @@ export function ThisPage() {
       setLoaded(true);
     };
     void refresh();
-    const onActivated = () => void refresh();
-    const onUpdated = (_id: number, info: { url?: string; status?: string }) => {
-      if (info.url !== undefined || info.status === 'complete') void refresh();
+    // Only this window's tabs matter: focusing another window must not retarget the panel.
+    let ownWindow: number | undefined;
+    void chrome.windows.getCurrent().then(
+      (win) => {
+        ownWindow = win.id;
+      },
+      () => undefined,
+    );
+    const inOwnWindow = (windowId: number) => ownWindow === undefined || windowId === ownWindow;
+    const onActivated = (info: { windowId: number }) => {
+      if (inOwnWindow(info.windowId)) void refresh();
     };
-    const onFocus = () => void refresh();
+    const onUpdated = (_id: number, info: { url?: string; status?: string }, tab: { windowId: number }) => {
+      if ((info.url !== undefined || info.status === 'complete') && inOwnWindow(tab.windowId)) void refresh();
+    };
     chrome.tabs.onActivated.addListener(onActivated);
     chrome.tabs.onUpdated.addListener(onUpdated);
-    chrome.windows.onFocusChanged.addListener(onFocus);
     return () => {
       alive = false;
       chrome.tabs.onActivated.removeListener(onActivated);
       chrome.tabs.onUpdated.removeListener(onUpdated);
-      chrome.windows.onFocusChanged.removeListener(onFocus);
     };
   }, []);
 
