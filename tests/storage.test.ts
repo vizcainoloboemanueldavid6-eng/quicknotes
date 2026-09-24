@@ -16,13 +16,17 @@ import {
   saveNote,
   setOrphans,
   setSitePaused,
+  setUrlPaused,
+  SettingsTooLargeError,
   subscribe,
   subscribePage,
+  syncItemBytes,
   updatePage,
   updateSettings,
   type StoreChange,
 } from '../src/lib/storage';
 import { DEFAULT_SETTINGS } from '../src/lib/types';
+import { isPausedUrl } from '../src/lib/url';
 import { flushEvents } from './chromeMock';
 import { NOON, makeHighlight, makeNote, makePage } from './fixtures';
 
@@ -221,6 +225,59 @@ describe('settings', () => {
     expect((await getSettings()).pausedSites).toEqual(['news.example.org']);
     await setSitePaused('not a site!', true);
     expect((await getSettings()).pausedSites).toEqual(['news.example.org']);
+  });
+
+  it('the popup resumes a page paused through a parent domain', async () => {
+    await setSitePaused('example.com', true);
+    await setSitePaused('other.org', true);
+    const resumed = await setUrlPaused('https://blog.example.com/post', false);
+    expect(resumed.pausedSites).toEqual(['other.org']);
+    expect(isPausedUrl('https://blog.example.com/post', resumed.pausedSites)).toBe(false);
+
+    const paused = await setUrlPaused('https://www.blog.example.com/post', true);
+    expect(paused.pausedSites).toEqual(['blog.example.com', 'other.org']);
+    // Resuming a subdomain never touches unrelated entries or children of it.
+    await setSitePaused('deep.blog.example.com', true);
+    expect((await setUrlPaused('https://blog.example.com/', false)).pausedSites).toEqual([
+      'deep.blog.example.com',
+      'other.org',
+    ]);
+  });
+
+  it('refuses to pause a page without a host name (file://)', async () => {
+    await expect(setUrlPaused('file:///C:/demo/article.html', true)).rejects.toThrow();
+    expect((await getSettings()).pausedSites).toEqual([]);
+  });
+
+  it('a settings write that would exceed the storage.sync item quota stores nothing', async () => {
+    // Real Chrome rejects such a write; the mock does too (8,192 bytes per item).
+    const sites = Array.from({ length: 600 }, (_, i) => `site-number-${i}.example.com`);
+    await expect(updateSettings({ pausedSites: sites })).rejects.toBeInstanceOf(SettingsTooLargeError);
+    expect(mockChrome.storage.sync.dump()).toEqual({});
+
+    // Filling the list one site at a time stops cleanly at the limit.
+    let added = 0;
+    let failure: unknown = null;
+    for (const site of sites) {
+      try {
+        await setSitePaused(site, true);
+        added++;
+      } catch (error) {
+        failure = error;
+        break;
+      }
+    }
+    expect(failure).toBeInstanceOf(SettingsTooLargeError);
+    expect(added).toBeGreaterThan(200);
+    const stored = await getSettings();
+    expect(stored.pausedSites).toHaveLength(added);
+    expect(syncItemBytes(SETTINGS_KEY, stored)).toBeLessThanOrEqual(8192);
+  });
+
+  it("Chrome's own write errors reach the caller", async () => {
+    vi.spyOn(mockChrome.storage.sync, 'set').mockRejectedValueOnce(new Error('MAX_WRITE_OPERATIONS_PER_MINUTE'));
+    await expect(updateSettings({ defaultColor: 'pink' })).rejects.toThrow('MAX_WRITE_OPERATIONS_PER_MINUTE');
+    expect((await getSettings()).defaultColor).toBe(DEFAULT_SETTINGS.defaultColor);
   });
 });
 

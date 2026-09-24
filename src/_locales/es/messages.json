@@ -103,6 +103,16 @@
     "placeholders": { "shortcut": { "content": "$1", "example": "Alt+N" } }
   },
   "popupError": { "message": "Algo salió mal. Recarga la página e inténtalo de nuevo." },
+  "popupLocalFile": {
+    "message": "Los archivos de tu equipo no se pueden pausar. QuickNotes solo funciona en ellos cuando lo usas."
+  },
+  "popupFileAccess": {
+    "message": "Para usar QuickNotes en archivos de tu equipo, activa «Permitir el acceso a URL de archivo» en los detalles de la extensión."
+  },
+  "popupFileAccessMaybe": {
+    "message": "¿Es un archivo de tu equipo? QuickNotes funciona en archivos locales cuando activas «Permitir el acceso a URL de archivo» en los detalles de la extensión."
+  },
+  "popupFileAccessButton": { "message": "Abrir detalles de la extensión" },
 
   "sidePanelTitle": { "message": "QuickNotes" },
   "sidePanelThisPage": { "message": "Esta página" },
@@ -214,5 +224,7 @@
   "optionsDangerWord": { "message": "BORRAR" },
   "optionsDangerButton": { "message": "Borrarlo todo" },
   "optionsDeleted": { "message": "Se borraron todos los datos." },
-  "optionsSaved": { "message": "Guardado" }
+  "optionsSaved": { "message": "Guardado" },
+  "settingsTooLarge": { "message": "Hay demasiados sitios en pausa para guardarlos. Quita algunos en Opciones." },
+  "settingsSaveFailed": { "message": "No se pudieron guardar los ajustes. Inténtalo de nuevo." }
 }

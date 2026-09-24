@@ -152,15 +152,31 @@ export function parseSiteEntry(input: string): string | null {
   return SITE_PATTERN.test(site) ? site : null;
 }
 
+/** True when the paused-sites entry `entry` covers `site` (the site itself or a parent domain). */
+export function entryCoversSite(entry: string, site: string): boolean {
+  return site === entry || site.endsWith(`.${entry}`);
+}
+
 /**
- * A URL is paused when its host equals a paused site or is a subdomain of one.
- * `www.` is ignored on both sides.
+ * The paused-sites entry that pauses a URL — its own site first, else a parent
+ * domain — or null. `www.` is ignored on both sides. Pages without a host name
+ * (file://) can never be paused.
  */
-export function isPausedUrl(input: string, pausedSites: readonly string[]): boolean {
+export function pausedEntryFor(input: string, pausedSites: readonly string[]): string | null {
   const host = hostOf(input);
-  if (!host) return false;
+  if (!host) return null;
   const site = siteOf(host);
-  return pausedSites.some((entry) => site === entry || site.endsWith(`.${entry}`));
+  return pausedSites.includes(site) ? site : (pausedSites.find((entry) => entryCoversSite(entry, site)) ?? null);
+}
+
+/** A URL is paused when its host equals a paused site or is a subdomain of one. */
+export function isPausedUrl(input: string, pausedSites: readonly string[]): boolean {
+  return pausedEntryFor(input, pausedSites) !== null;
+}
+
+/** Whether "Pause on this site" applies to a page: it needs a host name (file:// pages have none). */
+export function canPauseUrl(input: string): boolean {
+  return parseSiteEntry(input) !== null;
 }
 
 /** Pages QuickNotes can inject into (the browser still refuses some, e.g. its own store). */

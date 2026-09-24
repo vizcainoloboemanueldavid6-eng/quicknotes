@@ -8,7 +8,14 @@ import type { ComponentChildren } from 'preact';
 import { PALETTE } from '../lib/colors';
 import { colorName, t, type MessageKey } from '../lib/i18n';
 import { sendToBackground } from '../lib/messages';
-import { clearAllData, getSettings, setSitePaused, subscribeSettings, updateSettings } from '../lib/storage';
+import {
+  clearAllData,
+  getSettings,
+  setSitePaused,
+  SettingsTooLargeError,
+  subscribeSettings,
+  updateSettings,
+} from '../lib/storage';
 import { COLORS, DEFAULT_SETTINGS, THEMES, type Settings, type Theme } from '../lib/types';
 import { HOST_PERMISSION_ORIGINS, parseSiteEntry } from '../lib/url';
 
@@ -35,6 +42,13 @@ export function Options() {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [deleted, setDeleted] = useState(false);
+  const [saveError, setSaveError] = useState<MessageKey | null>(null);
+
+  /** A settings write failed: say why and show what is really stored again. */
+  const failed = (error: unknown) => {
+    setSaveError(error instanceof SettingsTooLargeError ? 'settingsTooLarge' : 'settingsSaveFailed');
+    void getSettings().then(setSettings);
+  };
 
   useEffect(() => {
     void getSettings().then(setSettings);
@@ -58,11 +72,13 @@ export function Options() {
 
   const save = (patch: Partial<Settings>) => {
     setSettings((current) => ({ ...current, ...patch }));
-    void updateSettings(patch);
+    setSaveError(null);
+    updateSettings(patch).catch(failed);
   };
 
   const toggleAutoRestore = async (enabled: boolean) => {
     setPermissionDenied(false);
+    setSaveError(null);
     if (enabled) {
       // Must be requested from the click itself (user gesture).
       const granted = await chrome.permissions.request({ origins: [...HOST_PERMISSION_ORIGINS] }).catch(() => false);
@@ -73,9 +89,14 @@ export function Options() {
         setSettings((current) => ({ ...current, autoRestore: false }));
         return;
       }
-      await updateSettings({ autoRestore: true });
-    } else {
-      await updateSettings({ autoRestore: false });
+    }
+    try {
+      await updateSettings({ autoRestore: enabled });
+    } catch (error) {
+      failed(error);
+    }
+    // Without the setting saved, the permission is not needed (or no longer wanted).
+    if (!enabled || !(await getSettings()).autoRestore) {
       await chrome.permissions.remove({ origins: [...HOST_PERMISSION_ORIGINS] }).catch(() => false);
     }
     await sendToBackground({ type: 'qn:bg:sync-auto-restore' });
@@ -89,8 +110,14 @@ export function Options() {
       return;
     }
     setSiteError(false);
-    setSiteInput('');
-    void setSitePaused(site, true);
+    setSaveError(null);
+    // The input is only cleared once the site is really in the list.
+    setSitePaused(site, true).then(() => setSiteInput(''), failed);
+  };
+
+  const removeSite = (site: string) => {
+    setSaveError(null);
+    setSitePaused(site, false).catch(failed);
   };
 
   const confirmWord = t('optionsDangerWord');
@@ -111,6 +138,16 @@ export function Options() {
         <img src="/icons/icon-48.png" width="36" height="36" alt="" />
         <h1 class="text-[22px] font-semibold">{t('optionsTitle')}</h1>
       </header>
+
+      {saveError && (
+        <p
+          role="alert"
+          data-testid="save-error"
+          class="rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-800 dark:bg-red-950 dark:text-red-200"
+        >
+          {t(saveError)}
+        </p>
+      )}
 
       <Section title={t('optionsDefaultColor')}>
         <div class="flex flex-wrap gap-2" role="radiogroup" aria-label={t('optionsDefaultColor')}>
@@ -203,7 +240,7 @@ export function Options() {
                 <button
                   type="button"
                   class="rounded px-2 py-1 text-[13px] text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950"
-                  onClick={() => void setSitePaused(site, false)}
+                  onClick={() => removeSite(site)}
                 >
                   {t('optionsRemoveSite', site)}
                 </button>

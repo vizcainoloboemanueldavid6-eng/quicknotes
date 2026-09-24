@@ -99,6 +99,16 @@
     "placeholders": { "shortcut": { "content": "$1", "example": "Alt+N" } }
   },
   "popupError": { "message": "Something went wrong. Reload the page and try again." },
+  "popupLocalFile": {
+    "message": "Files on your computer can't be paused. QuickNotes only runs on them when you use it."
+  },
+  "popupFileAccess": {
+    "message": "To use QuickNotes on files from your computer, turn on \"Allow access to file URLs\" in the extension's details."
+  },
+  "popupFileAccessMaybe": {
+    "message": "Is this a file from your computer? QuickNotes works on local files once \"Allow access to file URLs\" is on in the extension's details."
+  },
+  "popupFileAccessButton": { "message": "Open extension details" },
 
   "sidePanelTitle": { "message": "QuickNotes" },
   "sidePanelThisPage": { "message": "This page" },
@@ -204,5 +214,7 @@
   "optionsDangerWord": { "message": "DELETE" },
   "optionsDangerButton": { "message": "Delete everything" },
   "optionsDeleted": { "message": "All data deleted." },
-  "optionsSaved": { "message": "Saved" }
+  "optionsSaved": { "message": "Saved" },
+  "settingsTooLarge": { "message": "Too many paused sites to save. Remove a few in Options first." },
+  "settingsSaveFailed": { "message": "Your settings could not be saved. Try again." }
 }

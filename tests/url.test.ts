@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canPauseUrl,
   hostOf,
   isPausedUrl,
+  pausedEntryFor,
   isSupportedUrl,
   isTrackingParam,
   matchPatternsForSite,
@@ -145,6 +147,23 @@ describe('sites and pausing', () => {
   it('pausing a subdomain does not pause its parent', () => {
     expect(isPausedUrl('https://example.com/', ['news.example.com'])).toBe(false);
     expect(isPausedUrl('https://news.example.com/', ['news.example.com'])).toBe(true);
+  });
+
+  it('names the entry that pauses a page, its own site first', () => {
+    expect(pausedEntryFor('https://blog.example.com/post', ['example.com'])).toBe('example.com');
+    expect(pausedEntryFor('https://blog.example.com/post', ['example.com', 'blog.example.com'])).toBe(
+      'blog.example.com',
+    );
+    expect(pausedEntryFor('https://www.example.com/', ['example.com'])).toBe('example.com');
+    expect(pausedEntryFor('https://example.org/', ['example.com'])).toBeNull();
+    expect(pausedEntryFor('file:///C:/demo/article.html', ['example.com'])).toBeNull();
+  });
+
+  it('only pages with a host name can be paused (not file:// pages)', () => {
+    expect(canPauseUrl('https://example.com/a')).toBe(true);
+    expect(canPauseUrl('http://127.0.0.1:4323/article.html')).toBe(true);
+    expect(canPauseUrl('file:///C:/demo/article.html')).toBe(false);
+    expect(canPauseUrl('about:blank')).toBe(false);
   });
 
   it('builds excludeMatches patterns for a paused site', () => {

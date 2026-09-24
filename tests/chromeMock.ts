@@ -1,7 +1,8 @@
 /**
  * Minimal in-memory implementation of the chrome.* APIs the library code uses:
  * storage.local / storage.sync (get/set/remove/clear + onChanged, with values
- * deep-cloned the way Chrome serializes them), i18n.getMessage (reading the real
+ * deep-cloned the way Chrome serializes them, and sync's 8,192-byte per-item
+ * quota enforced the way Chrome enforces it), i18n.getMessage (reading the real
  * English messages.json, placeholders included) and runtime.id.
  */
 import en from '../src/_locales/en/messages.json';
@@ -24,8 +25,12 @@ function createEvent<T extends (...args: never[]) => void>() {
   };
 }
 
+/** chrome.storage.sync's per-item limit: key + JSON of the value, in bytes. */
+const SYNC_QUOTA_BYTES_PER_ITEM = 8192;
+
 function createArea(name: 'local' | 'sync', onChanged: ReturnType<typeof createEvent<ChangeListener>>) {
   let data: Items = {};
+  const quotaPerItem = name === 'sync' ? SYNC_QUOTA_BYTES_PER_ITEM : Infinity;
   const emit = (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>) => {
     if (Object.keys(changes).length === 0) return;
     // Chrome dispatches storage events asynchronously.
@@ -46,6 +51,12 @@ function createArea(name: 'local' | 'sync', onChanged: ReturnType<typeof createE
       return Promise.resolve(result);
     },
     set: (items: Items): Promise<void> => {
+      // Like Chrome, a write with an oversized item is rejected as a whole.
+      for (const [key, value] of Object.entries(items)) {
+        if (new TextEncoder().encode(key + JSON.stringify(value)).length > quotaPerItem) {
+          return Promise.reject(new Error('QUOTA_BYTES_PER_ITEM quota exceeded'));
+        }
+      }
       const changes: Record<string, { oldValue?: unknown; newValue?: unknown }> = {};
       for (const [key, value] of Object.entries(items)) {
         const cloned = structuredClone(value);
@@ -96,7 +107,7 @@ export function createChromeMock() {
     i18n: { getMessage, getUILanguage: () => 'en' },
     storage: {
       local: createArea('local', onChanged),
-      sync: createArea('sync', onChanged),
+      sync: { ...createArea('sync', onChanged), QUOTA_BYTES_PER_ITEM: SYNC_QUOTA_BYTES_PER_ITEM },
       onChanged,
     },
   };

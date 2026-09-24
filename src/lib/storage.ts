@@ -21,7 +21,7 @@ import {
   type Settings,
   type StickyNote,
 } from './types';
-import { normalizeUrl, parseSiteEntry } from './url';
+import { entryCoversSite, normalizeUrl, parseSiteEntry } from './url';
 
 export const PAGE_KEY_PREFIX = 'page:';
 export const SETTINGS_KEY = 'settings';
@@ -242,6 +242,28 @@ export async function getSettings(): Promise<Settings> {
   return coerceSettings(result[SETTINGS_KEY]);
 }
 
+/** chrome.storage.sync limit for one item (8,192 bytes), which all settings share. */
+const SYNC_QUOTA_BYTES_PER_ITEM = 8_192;
+
+/** The settings no longer fit in one storage.sync item (in practice: too many paused sites). */
+export class SettingsTooLargeError extends Error {
+  constructor() {
+    super('The settings are larger than chrome.storage.sync allows for one item.');
+    this.name = 'SettingsTooLargeError';
+  }
+}
+
+/** Size of an item as chrome.storage.sync counts it: the key plus the JSON of the value, in bytes. */
+export function syncItemBytes(key: string, value: unknown): number {
+  return new TextEncoder().encode(key + JSON.stringify(value)).length;
+}
+
+/**
+ * Read-modify-write of the settings. Rejects — and stores nothing — with
+ * SettingsTooLargeError when the result would not fit in one storage.sync item,
+ * or with Chrome's own error when the write fails; callers show the error and
+ * keep the previous state.
+ */
 export function updateSettings(
   patch: Partial<Settings> | ((current: Settings) => Partial<Settings>),
 ): Promise<Settings> {
@@ -249,17 +271,34 @@ export function updateSettings(
     const current = await getSettings();
     const changes = typeof patch === 'function' ? patch(current) : patch;
     const next = coerceSettings({ ...current, ...changes });
+    const quota = chrome.storage.sync.QUOTA_BYTES_PER_ITEM || SYNC_QUOTA_BYTES_PER_ITEM;
+    if (syncItemBytes(SETTINGS_KEY, next) > quota) throw new SettingsTooLargeError();
     await chrome.storage.sync.set({ [SETTINGS_KEY]: next });
     return next;
   });
 }
 
-/** Adds or removes a site from the paused list. Accepts a URL, a host or a bare site. */
+/** Adds or removes one entry of the paused list (Options). Accepts a URL, a host or a bare site. */
 export function setSitePaused(siteOrUrl: string, paused: boolean): Promise<Settings> {
   const site = parseSiteEntry(siteOrUrl);
   return updateSettings((current) => {
     if (!site) return {};
     const others = current.pausedSites.filter((entry) => entry !== site);
+    return { pausedSites: paused ? [...others, site] : others };
+  });
+}
+
+/**
+ * The popup's "Pause on this site" for a page. Pausing adds the page's site;
+ * resuming removes every entry that covers it — its own site and any parent
+ * domain (a page on blog.example.com is also paused by "example.com") — so the
+ * page really is resumed. Rejects for pages without a host name (file://).
+ */
+export function setUrlPaused(url: string, paused: boolean): Promise<Settings> {
+  const site = parseSiteEntry(url);
+  if (!site) return Promise.reject(new Error(`No site to pause for ${url}`));
+  return updateSettings((current) => {
+    const others = current.pausedSites.filter((entry) => (paused ? entry !== site : !entryCoversSite(entry, site)));
     return { pausedSites: paused ? [...others, site] : others };
   });
 }

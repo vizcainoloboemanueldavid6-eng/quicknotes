@@ -2,16 +2,24 @@
  * The default install: no host permissions, nothing registered. The content
  * script only runs after the user clicks the toolbar button (which grants
  * activeTab), and after a reload the page's notes come back on the next click.
- * Needs a browser that can click the toolbar button for us
- * (Extensions.triggerAction, recent Chrome).
+ *
+ * Clicking the toolbar button needs Extensions.triggerAction, which only recent
+ * Chrome has, so this file always runs in the installed Chrome (whatever
+ * QN_E2E_BROWSER says for the rest of the suite). It is skipped only when the
+ * run is explicitly limited to Chromium (QN_E2E_BROWSER=chromium).
  */
 import { PASSAGES, markBoxes, noteBox, popupReady, selectText, waitForQuickNotes } from './helpers';
 import { expect, test } from './harness';
 
-test.use({ variant: 'default' });
+test.use({ variant: 'default', browserKind: 'chrome' });
+
+test.skip(process.env.QN_E2E_BROWSER === 'chromium', 'This run is limited to Chromium, which cannot click the button.');
+
+/** demo/article.html opened from disk (file://). */
+const LOCAL_ARTICLE = new URL('../demo/article.html', import.meta.url).href;
 
 test('the toolbar button injects on demand and restores the page after a reload', async ({ harness }) => {
-  test.skip(!harness.canTriggerAction(), 'This browser cannot click the toolbar button (Extensions.triggerAction).');
+  expect(harness.canTriggerAction()).toBe(true);
 
   const page = await harness.openDemo();
   // Nothing runs before the user acts: no host permission, nothing registered.
@@ -63,6 +71,42 @@ test('the toolbar button injects on demand and restores the page after a reload'
   const panel = await harness.attach('/src/sidepanel/index.html');
   await panel.waitFor('document.querySelectorAll("[data-testid=item-highlight]").length === 1');
   expect(await panel.text('[data-testid="item-note"]')).toEqual([expect.stringContaining('Added from the popup.')]);
+
+  expect(await harness.allErrors()).toEqual([]);
+});
+
+test('on a local file the popup explains file access and offers no pause switch', async ({ harness }) => {
+  // Chrome's "Allow access to file URLs" is off for an extension installed from the
+  // Web Store (an unpacked one starts with it on): say how to turn it on.
+  await harness.setFileAccess(false);
+  const page = await harness.context.newPage();
+  await page.goto(LOCAL_ARTICLE);
+  // Chrome then hides even the tab's URL from the extension (Chrome 153), or shows
+  // it (older Chromium): the popup mentions the setting either way.
+  let popup = await harness.clickAction(page);
+  await popup.waitFor('document.querySelector("[data-testid=file-access], [data-testid=file-access-hint]") !== null');
+  expect(await popup.evaluate(() => document.body.innerText)).toContain('"Allow access to file URLs"');
+  expect(await popup.evaluate(() => document.querySelector('input[role=switch]') === null)).toBe(true);
+  expect(
+    await popup.evaluate(() =>
+      [...document.querySelectorAll('button')].some((b) => b.textContent === 'New note' && !b.disabled),
+    ),
+  ).toBe(false);
+  await popup.close();
+
+  // With file access on, QuickNotes runs there; a file has no site to pause.
+  await harness.setFileAccess(true);
+  await page.reload();
+  popup = await harness.clickAction(page);
+  await waitForQuickNotes(page);
+  await popup.waitFor('document.querySelector("[data-testid=local-file]") !== null');
+  expect(await popup.text('[data-testid="site"]')).toEqual(['Local files']);
+  expect(await popup.evaluate(() => document.querySelector('input[role=switch]') === null)).toBe(true);
+  await popup.waitFor(
+    '[...document.querySelectorAll("button")].some((b) => b.textContent === "New note" && !b.disabled)',
+  );
+  await popup.click('button', 'New note');
+  await expect(page.locator('[data-qn="note"]')).toBeVisible();
 
   expect(await harness.allErrors()).toEqual([]);
 });
