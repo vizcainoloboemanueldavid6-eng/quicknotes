@@ -1,9 +1,14 @@
 /**
  * One host element per page, <quicknotes-root>, appended to <html> (outside
  * <body>, so page layouts and body transforms do not affect it). Everything
- * QuickNotes draws — toolbar, menus, sticky notes, toasts — lives in its open
- * shadow root, isolated both ways:
+ * QuickNotes draws — toolbar, menus, sticky notes, toasts — lives in its
+ * *closed* shadow root, isolated both ways:
  *
+ *  - Privacy: the page's own scripts get `null` from `host.shadowRoot`, so they
+ *    cannot read the text of the user's notes, rewrite it or press its buttons.
+ *    Only the controller holds the ShadowRoot reference returned here. (The
+ *    end-to-end tests run against a copy of the build patched to "open"; see
+ *    e2e/harness.ts. The shipped build is checked to stay closed.)
  *  - Page → UI: page selectors cannot reach into a shadow root. Inherited
  *    properties still cross the boundary, so `:host { all: initial }` cuts them
  *    off. `!important` declarations in a shadow tree's :host rules beat the
@@ -65,7 +70,9 @@ export function createShadowUi(doc: Document = document): ShadowUi {
 
   const host = doc.createElement(HOST_TAG);
   host.setAttribute('data-quicknotes', '');
-  const shadow = host.attachShadow({ mode: 'open' });
+  // Closed: see the file comment. Keep this call literal — the e2e harness
+  // looks for it in the built script to make its test copy.
+  const shadow = host.attachShadow({ mode: 'closed' });
   adoptStyles(shadow, `${HOST_CSS}\n${contentCss}`);
 
   const layer = doc.createElement('div');
@@ -73,8 +80,10 @@ export function createShadowUi(doc: Document = document): ShadowUi {
   layer.setAttribute('lang', chrome.i18n.getUILanguage());
   shadow.appendChild(layer);
 
-  // Keystrokes typed into notes must not trigger the page's own shortcuts
-  // (bubble-phase listeners on document/window never see them).
+  // Keystrokes typed into notes should not trigger the page's own shortcuts:
+  // stopping them here hides them from every bubble-phase listener on
+  // document/window. Capture-phase listeners on window/document run before
+  // this point and cannot be kept out from an isolated world (DECISIONS.md).
   for (const type of ['keydown', 'keyup', 'keypress', 'input', 'beforeinput', 'paste', 'copy', 'cut']) {
     layer.addEventListener(type, (event) => event.stopPropagation());
   }

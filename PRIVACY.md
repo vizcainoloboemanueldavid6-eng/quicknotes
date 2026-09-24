@@ -19,6 +19,19 @@ QuickNotes does **not** read, record or keep anything about pages you do not ann
 store your browsing history, it does not track which pages you visit, and it contains no
 advertising, analytics or telemetry code.
 
+## What the website you are on can see
+
+QuickNotes draws your notes, its toolbar and its menus inside the page in a _closed_ shadow root:
+the website's own scripts (including any analytics or session-recording scripts it runs) cannot read
+the text of your notes, change them or press their buttons. Two things are part of any web page and
+cannot be hidden from it:
+
+- **Highlights** are drawn around the page's own text, so the page can tell which of its passages
+  are highlighted, and in which color.
+- **Typing**: like any text typed on a web page, the keys you press while writing a note can be
+  observed by the page's scripts as you type. Avoid writing secrets in notes on sites you do not
+  trust.
+
 ## What QuickNotes never does
 
 - It never sends data over the network (the code contains no `fetch`, `XMLHttpRequest`, WebSocket or

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from './harness';
 
-test.use({ variant: 'default' });
+test.use({ variant: 'default', shadow: 'shipped' });
 
 test('the build contains no network or remote-code APIs', async () => {
   const dist = fileURLToPath(new URL('../dist/', import.meta.url));

@@ -14,16 +14,24 @@
  *    Extensions.triggerAction — a real toolbar-button click, which is what grants
  *    `activeTab` — so the activeTab tests only run there;
  *  - "auto" (default): Chromium, falling back to Chrome when it cannot start.
+ * A spec can pin its browser with `test.use({ browserKind: 'chrome' })`.
  *
  * Variants of the extension under test:
- *  - "default": dist/ exactly as shipped (host access only through activeTab);
- *  - "hosts": a copy of dist/ whose optional http/https host permissions are
- *    declared as granted, standing in for the user accepting the
- *    "Restore my notes automatically" permission prompt, which a headless
- *    browser cannot show. Revoking works as in real life, from
- *    chrome://extensions (see ExtensionHarness.setSiteAccess).
+ *  - "default": host access only through activeTab, as installed;
+ *  - "hosts": the optional http/https host permissions are declared as granted,
+ *    standing in for the user accepting the "Restore my notes automatically"
+ *    permission prompt, which a headless browser cannot show. Revoking works as
+ *    in real life, from chrome://extensions (see ExtensionHarness.setSiteAccess).
+ *
+ * Shadow root (`shadow` option):
+ *  - "test" (default): a copy of dist/ in which the one `attachShadow({mode:
+ *    "closed"})` call of the content script is patched to "open", so that
+ *    Playwright locators (which only pierce open shadow roots) can drive the
+ *    injected UI. Nothing else differs from the shipped build.
+ *  - "shipped": dist/ exactly as built (closed shadow root). Used by the install
+ *    and privacy specs.
  */
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -39,11 +47,11 @@ import {
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(ROOT, 'dist');
-const HOSTS_DIST = join(ROOT, 'dist-e2e-hosts');
 export const DEMO_PORT = Number(process.env.QN_E2E_PORT) || 4324;
 const HEADED = process.env.QN_E2E_HEADED === '1';
 
 export type Variant = 'default' | 'hosts';
+export type ShadowMode = 'test' | 'shipped';
 export type BrowserKind = 'chromium' | 'chrome';
 
 // ---------------------------------------------------------------------------
@@ -214,15 +222,42 @@ export class CdpTarget {
 // Browser + extension
 // ---------------------------------------------------------------------------
 
-async function prepareHostsBuild(): Promise<string> {
-  await rm(HOSTS_DIST, { recursive: true, force: true });
-  await cp(DIST, HOSTS_DIST, { recursive: true });
-  const path = join(HOSTS_DIST, 'manifest.json');
-  const manifest = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
-  manifest.host_permissions = manifest.optional_host_permissions;
-  delete manifest.optional_host_permissions;
-  await writeFile(path, JSON.stringify(manifest, null, 2));
-  return HOSTS_DIST;
+/** The content script's shadow-root call as the minifier prints it (see src/content/shadow.ts). */
+const CLOSED_SHADOW_CALL = /attachShadow\(\{\s*mode:\s*(["'`])closed\1\s*\}\)/g;
+
+/** Patches the copy's single closed shadow root to "open"; fails loudly if the build changed shape. */
+async function openShadowRootForTests(dir: string): Promise<void> {
+  const files = (await readdir(dir, { recursive: true })).filter((file) => file.endsWith('.js'));
+  let replaced = 0;
+  for (const file of files) {
+    const path = join(dir, file);
+    const code = await readFile(path, 'utf8');
+    const patched = code.replace(CLOSED_SHADOW_CALL, () => {
+      replaced++;
+      return 'attachShadow({mode:"open"})';
+    });
+    if (patched !== code) await writeFile(path, patched);
+  }
+  if (replaced !== 1) {
+    throw new Error(`Expected exactly one closed attachShadow() call in the build, found ${replaced}.`);
+  }
+}
+
+/** The directory Chrome loads for a variant: dist/ itself, or a patched copy of it. */
+async function prepareBuild(variant: Variant, shadow: ShadowMode): Promise<string> {
+  if (variant === 'default' && shadow === 'shipped') return DIST;
+  const dir = join(ROOT, `dist-e2e-${variant}${shadow === 'shipped' ? '-shipped' : ''}`);
+  await rm(dir, { recursive: true, force: true });
+  await cp(DIST, dir, { recursive: true });
+  if (variant === 'hosts') {
+    const path = join(dir, 'manifest.json');
+    const manifest = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+    manifest.host_permissions = manifest.optional_host_permissions;
+    delete manifest.optional_host_permissions;
+    await writeFile(path, JSON.stringify(manifest, null, 2));
+  }
+  if (shadow === 'test') await openShadowRootForTests(dir);
+  return dir;
 }
 
 const LAUNCH_OPTIONS = {
@@ -258,8 +293,9 @@ async function unpackedExtensionId(context: BrowserContext): Promise<string> {
 async function launch(
   profile: string,
   extensionPath: string,
+  pinned: BrowserKind | 'default',
 ): Promise<{ context: BrowserContext; kind: BrowserKind; extensionId: string }> {
-  const wanted = process.env.QN_E2E_BROWSER ?? 'auto';
+  const wanted = pinned === 'default' ? (process.env.QN_E2E_BROWSER ?? 'auto') : pinned;
   if (wanted !== 'chrome') {
     let context: BrowserContext | null = null;
     try {
@@ -299,7 +335,11 @@ interface DeveloperPrivate {
   getExtensionsInfo(): Promise<Array<{ id: string; location: string }>>;
   updateProfileConfiguration(update: { inDeveloperMode: boolean }): Promise<void>;
   getExtensionInfo(id: string): Promise<ExtensionInfo>;
-  updateExtensionConfiguration(update: { extensionId: string; hostAccess: string }): Promise<void>;
+  updateExtensionConfiguration(update: {
+    extensionId: string;
+    hostAccess?: string;
+    fileAccess?: boolean;
+  }): Promise<void>;
 }
 
 /** Everything a test needs to drive the extension. */
@@ -481,6 +521,21 @@ export class ExtensionHarness {
     );
   }
 
+  /**
+   * Chrome's "Allow access to file URLs" switch for the extension (off for a new
+   * install). Chrome reloads the extension when it changes.
+   */
+  async setFileAccess(allowed: boolean): Promise<void> {
+    const page = await this.management();
+    await page.evaluate(
+      async ({ id, fileAccess }) => {
+        const api = (chrome as unknown as { developerPrivate: DeveloperPrivate }).developerPrivate;
+        await api.updateExtensionConfiguration({ extensionId: id, fileAccess });
+      },
+      { id: this.extensionId, fileAccess: allowed },
+    );
+  }
+
   /** Every error seen in any extension context and on the pages under test. */
   async allErrors(): Promise<string[]> {
     const info = await this.extensionInfo();
@@ -521,10 +576,15 @@ interface DemoServer {
 
 interface Options {
   variant: Variant;
+  shadow: ShadowMode;
+  /** Browser for this spec; "default" follows QN_E2E_BROWSER (auto: Chromium, then Chrome). */
+  browserKind: BrowserKind | 'default';
 }
 
 export const test = base.extend<Options & { harness: ExtensionHarness }, { demo: DemoServer }>({
   variant: ['default', { option: true }],
+  shadow: ['test', { option: true }],
+  browserKind: ['default', { option: true }],
 
   demo: [
     // eslint-disable-next-line no-empty-pattern
@@ -540,10 +600,10 @@ export const test = base.extend<Options & { harness: ExtensionHarness }, { demo:
     { scope: 'worker' },
   ],
 
-  harness: async ({ variant, demo }, use, testInfo) => {
-    const extensionPath = variant === 'hosts' ? await prepareHostsBuild() : DIST;
+  harness: async ({ variant, shadow, browserKind, demo }, use, testInfo) => {
+    const extensionPath = await prepareBuild(variant, shadow);
     const profile = await mkdtemp(join(tmpdir(), 'quicknotes-e2e-'));
-    const { context, kind, extensionId } = await launch(profile, extensionPath);
+    const { context, kind, extensionId } = await launch(profile, extensionPath, browserKind);
     const harness = new ExtensionHarness(context, kind, extensionId, variant, demo.url);
     try {
       await harness.enableErrorCollection();
