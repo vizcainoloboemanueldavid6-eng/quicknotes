@@ -2,32 +2,41 @@
 
 A Manifest V3 Chrome extension. Select text to highlight it in one of four pastel colors, pin
 draggable sticky notes anywhere on a page, and find everything again when you come back — anchored
-to the text, not to pixel positions. Everything stays in your browser: no account, no network
-requests, no analytics.
+to the text, not to pixel positions. Search every note you have taken from the side panel and export
+them to Markdown. Everything stays in your browser: no account, no network requests, no analytics.
 
 Interface in English and Spanish (follows the browser language).
+
+![Highlights in four colors, a note with a bulleted list, and the selection toolbar on the demo article](store-assets/screenshot-1-highlight-and-note.png)
+
+| The side panel: everything on this page                                                                               | "All notes": search, filters, and the popup                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| ![The demo article next to the side panel listing its highlights and notes](store-assets/screenshot-2-side-panel.png) | ![The popup over the article, and the side panel's All notes view with a search](store-assets/screenshot-3-all-notes-popup.png) |
 
 ## Features
 
 - **Highlight** — a small toolbar appears over any text selection: yellow, green, blue, pink, or
-  "Add note". Also available from the right-click menu ("Highlight with QuickNotes").
+  "Add note". Also available from the right-click menu ("Highlight with QuickNotes"). Click a
+  highlight to recolor it, attach a note, or delete it.
+- **Sticky notes** — draggable, resizable, minimizable, four paper colors, bold / italic / bulleted
+  and numbered lists (<kbd>Ctrl</kbd>+<kbd>B</kbd>, <kbd>Ctrl</kbd>+<kbd>I</kbd>). Positions are
+  stored as percentages of the page size.
 - **Robust anchoring** — highlights come back after a reload even when the page changed around them;
   repeated phrases are told apart by their context; highlights whose text is gone are listed as
   _orphaned_ instead of being drawn in the wrong place.
-- **Sticky notes** — draggable, resizable, minimizable, four paper colors, bold / italic / bulleted
-  and numbered lists (<kbd>Ctrl</kbd>+<kbd>B</kbd>, <kbd>Ctrl</kbd>+<kbd>I</kbd>). Positions are
-  stored relative to the page size.
-- **Click a highlight** to recolor it, attach a note, or delete it.
+- **Side panel** — "This page" lists the page's highlights, notes and orphaned highlights; click one
+  to scroll to it and flash it. "All notes" lists every page with full-text search (case- and
+  accent-insensitive), color and site filters, per-page delete and export.
+- **Export / import** — Markdown or JSON for the current page or for everything (a normal file
+  download); JSON import is validated and merges (see below).
+- **Popup** — counts for the current page, New note, Open side panel, Pause on this site.
 - **Keyboard shortcut** — <kbd>Alt</kbd>+<kbd>N</kbd> adds a note to the current page (change it at
   `chrome://extensions/shortcuts`).
-- **Popup** — counts for the current page, New note, Open side panel, Pause on this site.
-- **Side panel** — the current page's highlights and notes; click one to scroll to it.
-- **Options** — default color, show/hide the selection toolbar, paused sites, theme, opt-in
-  automatic restore on every site, and delete-all behind a typed confirmation.
-- **Export / import** — Markdown for one page or all pages, JSON export and a validated JSON import
-  (library functions in `src/lib/markdown.ts`).
+- **Options** — default color, show/hide the selection toolbar, shortcut info, paused sites, opt-in
+  automatic restore on every site, light/dark/system theme, and delete-all behind a typed
+  confirmation (`DELETE`).
 - **Isolated UI** — everything QuickNotes draws lives in a Shadow DOM: the page's CSS cannot break it
-  and its CSS cannot leak into the page.
+  and its CSS cannot leak into the page. The demo article proves it with deliberately hostile CSS.
 
 ## Permissions
 
@@ -41,48 +50,104 @@ Interface in English and Spanish (follows the browser language).
 | `http://*/*`, `https://*/*` (optional, opt-in) | Requested only when you enable "Restore my notes automatically on every site"; removed when you disable it. |
 
 Without the opt-in, a page's notes reappear when you click the QuickNotes button on it. See
-[DECISIONS.md](DECISIONS.md) for the reasoning.
+[PRIVACY.md](PRIVACY.md) for the privacy policy and [DECISIONS.md](DECISIONS.md) for the reasoning.
 
-## Install (unpacked)
+## Install (load unpacked)
 
 Requirements: Node.js 22.22+ (developed with Node 24) and Chrome 116+.
 
 ```bash
-npm install
+npm ci
 npm run build
 ```
 
-Then open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and choose the
-`dist/` folder. Pin QuickNotes to the toolbar, open any article, select some text and pick a color.
+Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and choose the
+`dist/` folder. Pin QuickNotes to the toolbar.
 
-To use it on local `file://` pages, open the extension's details and enable **Allow access to file
-URLs**.
+## Try it with the demo article
+
+`demo/article.html` is a sample article (original text, fictional publication) whose global CSS is
+deliberately hostile: `* { font-family: serif; color: #c00; box-sizing: content-box; letter-spacing:
+2px }` with `!important`, restyled `div`, `button`, `mark`, `p` and lists, rules that hide
+`[role=toolbar]` and `[contenteditable]`, and fixed overlays at the maximum z-index. QuickNotes' UI
+must look normal on it anyway.
+
+- **Over http (recommended):** `npm run demo`, then open <http://127.0.0.1:4323/article.html>
+  (`PORT=4329 npm run demo` for another port). Click the QuickNotes button once, select a sentence
+  and pick a color; add a note; reload the page and click the button again — everything comes back
+  in place. With "Restore my notes automatically" enabled in Options, no click is needed.
+- **As a local file:** open `demo/article.html` directly (`file:///…`). Chrome only lets extensions
+  run on `file://` pages after you enable **Allow access to file URLs** on the extension's details
+  page in `chrome://extensions`.
+- Add `#calm` to the URL (or use the button in the article's sidebar) to switch the hostile CSS off;
+  notes are shared by both modes because QuickNotes ignores the URL fragment.
 
 ## Development
 
-| Command          | What it does                                                                             |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| `npm run dev`    | Vite dev server (port 4320) writing a live-reloading build to `dist/`; load it unpacked. |
-| `npm run build`  | Type-checks (`tsc`) and builds the production extension into `dist/`.                    |
-| `npm run lint`   | ESLint (flat config, type-aware).                                                        |
-| `npm test`       | Vitest unit tests (jsdom).                                                               |
-| `npm run smoke`  | Builds, then drives the real extension in Chrome (see below).                            |
-| `npm run zip`    | Builds and packs `dist/` into `quicknotes-v1.0.0.zip` with `manifest.json` at the root.  |
-| `npm run icons`  | Re-renders `public/icons/icon-{16,32,48,128}.png` from `public/icons/icon.svg`.          |
-| `npm run format` | Prettier.                                                                                |
+| Command                | What it does                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `npm run dev`          | Vite dev server (port 4320) writing a live-reloading build to `dist/`; load it unpacked.       |
+| `npm run build`        | Type-checks (`tsc`, including tests and e2e) and builds the production extension into `dist/`. |
+| `npm run lint`         | ESLint (flat config, type-aware).                                                              |
+| `npm test`             | Vitest unit tests (jsdom).                                                                     |
+| `npm run test:e2e`     | Builds, then runs the Playwright end-to-end suite against the unpacked extension.              |
+| `npm run demo`         | Serves `demo/` on <http://127.0.0.1:4323>.                                                     |
+| `npm run store-assets` | Builds, then captures the Chrome Web Store screenshots and promo tile into `store-assets/`.    |
+| `npm run zip`          | Builds and packs `dist/` into `quicknotes-v1.0.0.zip` with `manifest.json` at the root.        |
+| `npm run icons`        | Re-renders `public/icons/icon-{16,32,48,128}.png` from `public/icons/icon.svg`.                |
+| `npm run format`       | Prettier.                                                                                      |
 
 ### Tests
 
-`npm test` covers URL normalization, storage (against an in-memory `chrome.storage` mock),
-anchor serialization and resolution (text changed around a quote, repeated quotes, whitespace,
-XPath fallback, orphans), highlight wrapping and removal, the HTML sanitizer, Markdown export, JSON
-import validation and the locale files.
+**Unit tests** (`npm test`, Vitest + jsdom): URL normalization, storage (against an in-memory
+`chrome.storage` mock), anchor serialization and resolution (text changed around a quote, repeated
+quotes, whitespace, XPath fallback, orphans), highlight wrapping, the HTML sanitizer, Markdown
+export, JSON import validation, full-text search and filters, the locale files, and the store
+listing (character limits and image sizes).
 
-`npm run smoke` loads the built extension into Chrome through the DevTools protocol and checks, on a
-page with deliberately hostile CSS: on-demand injection, the selection toolbar, highlights via the
-toolbar and via the context-menu path, notes with formatting, dragging, Shadow-DOM isolation,
-restore after reload (including a repeated quote), the highlight menu, orphan detection, pausing a
-site, and the opt-in registered content script. Screenshots land in `test-results/`.
+**End-to-end tests** (`npm run test:e2e`, `@playwright/test` 1.57.0) load the built `dist/` as an
+unpacked extension and use `demo/article.html`:
+
+- select text → the toolbar appears → highlight in each color; a note with bold text typed with
+  <kbd>Ctrl</kbd>+<kbd>B</kbd>, dragged, resized and minimized; reload → highlights and the note
+  reappear at the same coordinates (automatic restore opted in from Options);
+- the default install: nothing runs until the toolbar button is clicked (a real `activeTab` grant),
+  and after a reload the next click re-injects and restores; the popup's New note and Open side
+  panel;
+- computed styles inside the shadow root are unaffected by the hostile CSS, notes stay above the
+  page's maximum-z-index overlays, and nothing leaks into the page;
+- the real side panel (listing, click to scroll, delete, orphaned section, Markdown export content),
+  "All notes" search, color and site filters, Markdown/JSON downloads, import round trip and
+  validation errors;
+- "Pause on this site" (no toolbar, no restore, badge) and resuming; every Options setting;
+  revoking site access on `chrome://extensions` unregisters the automatic-restore script;
+- the context-menu handler, the highlight menu, and a page whose text changed between visits;
+- no errors in any extension context (Chrome's own extension error log, the pages, popup and side
+  panel), no manifest warnings, and no network APIs in the build.
+
+The harness (`e2e/harness.ts`) picks the browser with `QN_E2E_BROWSER`:
+
+- `chromium` — Playwright's bundled Chromium with `--load-extension` (`QN_CHROMIUM_PATH` overrides
+  the executable);
+- `chrome` — the installed Google Chrome, which ignores `--load-extension` since version 137, so
+  the extension is loaded through the DevTools method `Extensions.loadUnpacked`;
+- `auto` (default) — Chromium, falling back to Chrome when it cannot start.
+
+The `activeTab` test clicks the toolbar button through `Extensions.triggerAction`, which only recent
+Chrome offers; it is skipped on Chromium 143. `QN_E2E_HEADED=1` shows the browser, `QN_E2E_PORT`
+changes the demo server port (default 4324).
+
+## Package for the Chrome Web Store
+
+```bash
+npm run zip
+```
+
+produces `quicknotes-v1.0.0.zip` (the version comes from `package.json`) with `manifest.json`,
+`_locales/` and `icons/` at the root of the archive. The listing text is in
+[`store-assets/description.md`](store-assets/description.md), the privacy answers in
+[`PRIVACY.md`](PRIVACY.md), and the step-by-step publishing guide (in Spanish) in
+[`docs/PUBLISHING.md`](docs/PUBLISHING.md).
 
 ## How highlight anchoring works
 
@@ -96,26 +161,44 @@ When you highlight text, QuickNotes stores:
 When the page loads again, QuickNotes builds an index of the page's text and searches for the quote,
 ignoring whitespace differences. If it appears once, that's it. If it appears several times, the
 occurrence whose surroundings best match the saved context wins. If the quote is gone, the XPath
-fallback is tried, and its text is accepted only if it is still at least 75 % similar to the quote.
-Anything else is reported as orphaned. Pages that render late (single-page apps) are watched for a
-few seconds before a highlight is declared orphaned.
+fallback is tried, and its text is accepted only if it is still at least 75 % similar to the quote
+(so a changed capital letter or a fixed typo keeps the highlight, a rewritten sentence does not).
+Anything else is reported as orphaned and listed in the side panel. Pages that render late
+(single-page apps) are watched for a few seconds before a highlight is declared orphaned.
 
-Highlights are drawn by wrapping the matching text in `<quicknotes-mark>` elements; notes, toolbars
-and menus live in a single Shadow DOM host.
+Highlights are drawn by wrapping the matching text in `<quicknotes-mark>` elements with inline
+`!important` styles; notes, toolbars and menus live in a single Shadow DOM host.
+
+## Import and merge strategy
+
+JSON import (side panel → All notes → Import JSON) is all-or-nothing: the whole file is validated
+first and every problem is reported with its path (for example
+`pages[0].highlights[0].color: expected one of yellow, green, blue, pink`); nothing is written unless
+it is all valid. A valid file is **merged** into what you have:
+
+- pages that exist only in the file are added (URLs are normalized again, note HTML is sanitized
+  again);
+- for a page on both sides, highlights and notes are matched by id and the copy with the newer
+  `updatedAt` wins; items that exist on one side only are kept;
+- nothing already stored is deleted, so importing the same backup twice changes nothing.
 
 ## Project structure
 
 ```
 src/
-  background/   service worker: context menu, Alt+N, injection, auto-restore registration
+  background/   service worker: context menu, Alt+N, injection, auto-restore registration, badge
   content/      index.ts (controller), anchor.ts, highlighter.ts, shadow.ts,
                 toolbar.tsx, stickyNote.tsx, app.tsx, icons.tsx, content.css
-  lib/          types, storage, url, markdown (export/import), richtext, sanitize,
+  lib/          types, storage, url, markdown (export/import), search, richtext, sanitize,
                 messages, i18n, colors, merge
   popup/  sidepanel/  options/  ui/  styles/
   _locales/en  _locales/es
 tests/          Vitest unit tests
-scripts/        zip.mjs, smoke.mjs, icons.mjs
+e2e/            Playwright end-to-end tests and harness
+demo/           article.html — the demo page with hostile CSS
+scripts/        zip.mjs, demo-server.mjs, icons.mjs, store-assets/ (screenshot capture)
+store-assets/   listing text, screenshots, promo tile, store icon
+docs/           PUBLISHING.md — Chrome Web Store publishing guide (Spanish)
 public/icons/   icon.svg and the rendered PNGs
 ```
 
@@ -123,4 +206,4 @@ public/icons/   icon.svg and the rendered PNGs
 
 QuickNotes makes no network requests and contains no analytics. Notes, highlights and settings are
 stored with the `chrome.storage` API in your browser profile; settings may follow your profile if
-you use Chrome sync. Deleting the extension deletes its data.
+you use Chrome sync. Deleting the extension deletes its data. Full policy: [PRIVACY.md](PRIVACY.md).

@@ -108,6 +108,11 @@ script's `excludeMatches`. The context-menu item is disabled on the active tab w
 to be paused — Chrome only reveals tab URLs for tabs the user acted on or with host permissions, so
 elsewhere the item stays enabled and the click is refused, with an "off" badge on the button.
 
+The "off" badge is set whenever the background learns that a tab is on a paused site (an action was
+refused, the tab finished loading, or the pause list changed) and cleared when the site is resumed —
+only a badge QuickNotes set itself is ever cleared. An IP address has no subdomains, so a paused IP
+gets a single `excludeMatches` pattern instead of the `*.site` pair.
+
 ### Top frame only; `file://` works when Chrome allows it
 
 The script is injected into the top frame only; text inside iframes cannot be highlighted in v1.0.
@@ -161,7 +166,11 @@ Deterministic and idempotent (`normalize(normalize(x)) === normalize(x)`, covere
 - `utm_*` and a list of click/mail tracking parameters (`fbclid`, `gclid`, `msclkid`, `mc_eid`,
   `_ga`, …) are removed; `ref` is kept because it is often meaningful (e.g. a Git branch);
 - the remaining parameters are sorted by name (stable, so repeated names keep their order);
-- trailing slashes are removed except for the root path.
+- trailing slashes are removed except for the root path;
+- percent-escapes in the path are normalized (RFC 3986 §6.2.2): escapes of unreserved characters are
+  decoded and the rest get upper-case hex digits, so `/caf%c3%a9`, `/caf%C3%A9` and `/café` are one
+  page, as are `/%7Euser` and `/~user`. Escaped reserved characters (`%2F`, `%3F`) stay escaped
+  because decoding them would change the path's meaning.
 
 `www.example.com` and `example.com` stay different pages: some sites serve different content on
 them, and merging is not reversible. (The pause list, by contrast, ignores `www.`.)
@@ -284,27 +293,128 @@ drift apart, if a placeholder is missing, or if the code uses a key that does no
 
 ---
 
+## Side panel
+
+### Two views in one panel, "This page" first
+
+The panel opens on "This page" (what the user is looking at) with "All notes" one tab away, instead
+of two separate panels: Chrome allows one side panel per extension, and a tab switch keeps both a
+click apart. The tabs follow the WAI-ARIA tab pattern (arrow keys, Home/End).
+
+### "This page"
+
+Highlights are listed in reading order, then notes in creation order (a note attached to a highlight
+shows the start of its passage), then an **Orphaned** section with a one-line explanation — orphans
+cannot be scrolled to, so they are not buttons, but they can be deleted. Clicking an item asks the
+content script to scroll to it and flash it. That needs access to the tab; when the panel cannot
+reach the page (no `activeTab` grant yet, no host permission) it says so and suggests clicking the
+toolbar button, rather than failing silently. Deleting from the panel takes two clicks on the same
+button, like deleting a note on the page, and the open page follows through storage events.
+
+### "All notes": search semantics
+
+- Case- and accent-insensitive (`resume` finds "Résumé"), whitespace-collapsed.
+- The query is split into words and **every word must match**, either in the item itself or in its
+  page's title or URL — so "bread dough" finds a highlight about dough on a page titled "bread".
+- A page whose title or URL matches the whole query shows all of its items; otherwise only the
+  matching items are shown. Matches are marked in the results.
+- Color chips are a multi-select (none selected = all colors); the site filter groups by host name
+  without `www.`, and `file://` pages are grouped under "Local files".
+- Pages keep their order: most recently edited first.
+
+### Export is a download, import merges
+
+Exports are Blob downloads through a temporary `<a download>` link — no `downloads` permission.
+File names are `quicknotes-<host-and-path>-<date>.md|json` or `quicknotes-all-<date>.*`. The panel
+only offers **merge** on import (the storage layer also has `replace`): merging can never lose data,
+importing the same backup twice changes nothing, and a user who wants a clean slate can delete
+everything in Options first. Files over 10 MB (the `storage.local` quota) are refused before
+parsing. Validation messages come from the (English-only) validator because they quote JSON paths.
+
+### Imported highlights that are not on the open page are reported at once
+
+If an import or another tab adds highlights to the page being shown and some cannot be anchored, the
+content script starts the same orphan watch as on a fresh load, so they are flagged and listed as
+orphaned immediately instead of after the next reload.
+
+## Popup and options
+
+- The popup's "Open side panel" calls `chrome.sidePanel.open()` synchronously inside the click
+  handler (the API requires a user gesture) and closes the popup.
+- Options shows the current shortcut from `chrome.commands.getAll()` and re-reads it whenever the
+  page becomes visible again, because the shortcut is changed on `chrome://extensions/shortcuts` in
+  another tab (the "Change shortcuts" button opens it; extensions may open that page with
+  `chrome.tabs.create`).
+- The confirmation word for "Delete all data" is localized: `DELETE` in English, `BORRAR` in
+  Spanish — the help text shows the word to type, and a Spanish speaker should not have to type an
+  English word to delete their own data.
+- "Delete all data" also turns automatic restore off, gives the host permission back and
+  unregisters the content script, so nothing keeps running for data that no longer exists.
+
+## Demo article
+
+`demo/article.html` is original sample text about reading with a pencil, from a fictional
+publication. Its hostile stylesheet is the kind real sites ship — universal `!important` rules
+(`font-family`, `color`, `box-sizing`, `letter-spacing`, `line-height`), restyled `div`, `span`,
+`button`, `mark`, `p`, lists and `svg`, attribute selectors that hide `[role=toolbar]`,
+`[role=group]` and `[contenteditable]`, and a header, a banner and a vignette at `z-index:
+2147483647`. `#calm` switches the hostile sheet (and the banner describing it) off; the fragment is
+ignored by URL normalization, so both modes share the same notes. `npm run demo` serves it over http
+on port 4323 because `file://` pages need the user to enable "Allow access to file URLs" first.
+
 ## Verification tooling
 
-### The browser smoke test loads the extension through CDP
+### Ports
 
-On this machine Playwright's cached Chromium 143 (`chromium-1200`) no longer starts (Windows reports
-a side-by-side configuration error for `chrome.exe`), and branded Chrome ignores
-`--load-extension` since version 137. `scripts/smoke.mjs` therefore starts Chrome with
-`--enable-unsafe-extension-debugging` and loads `dist/` with the DevTools-protocol method
-`Extensions.loadUnpacked`; `--chromium` switches back to the bundled Chromium where it works.
-Because Playwright cannot click the browser toolbar or accept permission prompts, the test copies
-`dist/` to `dist-e2e/` and turns the optional host permissions into granted ones, standing in for
-the `activeTab` grant of a real click and for the user accepting the opt-in prompt. Playwright does
-not expose extension popups as pages either, so the real popup is opened with
-`chrome.action.openPopup()` and driven through raw CDP target messages.
+`npm run dev` uses 4320 (HMR 4321), `npm run demo` 4323, the end-to-end tests and the store-image
+capture 4324. All bind to 127.0.0.1.
 
----
+### End-to-end tests: which browser
 
-## Scope of this stage
+The suite (`@playwright/test` 1.57.0) prefers Playwright's bundled Chromium 143 with
+`--load-extension`, as intended for this project. On the development machine that binary does not
+start from Playwright's cache (Windows reports a side-by-side error for `chrome.exe` in
+`ms-playwright/chromium-1200`, although an identical copy elsewhere starts fine), so the harness
+falls back to the installed Chrome, loading the extension with the DevTools method
+`Extensions.loadUnpacked` (branded Chrome ignores `--load-extension` since version 137).
+`QN_CHROMIUM_PATH` points the harness at another Chromium executable; the suite was run both ways.
 
-This stage delivers the core — library, content script, background — plus working first versions of
-the popup, a current-page side panel and the options page, because the manifest needs them and the
-opt-in flow needs a UI. The side panel's "All notes" tab (search, color and domain filters, export and
-import), the demo article, end-to-end tests, store assets, `PRIVACY.md` and the final README are the
-next stage.
+### How the tests reach what Playwright cannot
+
+- **The toolbar button (`activeTab`).** Recent Chrome exposes `Extensions.triggerAction`, a real
+  action click that grants `activeTab` and opens the popup; the activeTab test uses it and is
+  skipped where it is missing (Chromium 143). `chrome.action.openPopup()` opens the popup but grants
+  nothing, so it is only used where host access exists.
+- **The optional host permission.** A headless browser cannot show the permission prompt, so tests
+  that need it load a copy of `dist/` (`dist-e2e-hosts/`) whose optional host permissions are
+  declared as granted — standing in for the user clicking "Allow". Revocation is real: the tests
+  switch site access to "on click" through `chrome://extensions` (`chrome.developerPrivate`), which
+  fires `permissions.onRemoved` exactly as a user's click would.
+- **Popup and side panel.** Playwright does not expose them as pages, so the harness attaches to
+  their DevTools targets and evaluates code there with a user gesture (which `sidePanel.open()`
+  needs). Downloads are checked on the side panel opened as a normal tab, where Playwright sees
+  them.
+- **Errors in every context.** The harness turns on developer mode and reads Chrome's own
+  extension error log (`developerPrivate.getExtensionInfo`: runtime errors from the service worker,
+  pages and content scripts, manifest errors, install warnings) in addition to console errors of the
+  pages, popup and side panel.
+- **The context menu and Alt+N** cannot be triggered from automation (the native menu and
+  browser-level shortcuts are outside the page); their handlers are exercised through the same
+  background messages they use.
+
+`scripts/smoke.mjs` from the first stage was folded into the suite and removed.
+
+### Store images are captured, not drawn
+
+`npm run store-assets` drives the real extension on the demo article (`#calm`) with the same
+harness and saves 1x PNGs. The side panel and popup are captured from their own DevTools targets and
+placed next to / over the page with `sharp`, because a headless browser renders no browser UI. The
+store summary is the manifest description itself (the dashboard takes it from the package), so both
+locales were rewritten to fit 132 characters and mention the four colors, search and Markdown export.
+
+### No fetch in the package
+
+Vite's modulepreload polyfill is disabled (`build.modulePreload.polyfill: false`; Chrome 116+
+supports modulepreload natively). It only fetched the extension's own chunks, but it put a `fetch()`
+into every extension page; without it the build contains no network API at all, which an end-to-end
+test checks and PRIVACY.md states.
