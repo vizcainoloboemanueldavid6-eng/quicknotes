@@ -142,7 +142,7 @@ En la pestaña **Distribución**:
 
 Si el panel muestra el campo **Instrucciones de prueba**, pega algo así:
 
-> No account or login is needed. Open any article (for example a news or Wikipedia page), click the
+> No account or login is needed. Open any page with a few paragraphs of text, click the
 > QuickNotes toolbar button, then select text: a toolbar appears to highlight it or add a note.
 > Reload the page and click the button again: highlights and notes come back. The side panel
 > ("Open side panel" in the popup) lists them and exports them to Markdown. The optional host

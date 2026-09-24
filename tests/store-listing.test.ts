@@ -57,5 +57,9 @@ describe('Chrome Web Store listing (store-assets/description.md)', () => {
     expect(existsSync(path), `${file} missing — run npm run store-assets`).toBe(true);
     const meta = await sharp(path).metadata();
     expect({ width: meta.width, height: meta.height, format: meta.format }).toEqual({ width, height, format: 'png' });
+    if (file !== 'icon-128.png') {
+      // The dashboard takes screenshots and promo tiles as JPEG or 24-bit PNG with no alpha.
+      expect({ channels: meta.channels, hasAlpha: meta.hasAlpha }).toEqual({ channels: 3, hasAlpha: false });
+    }
   });
 });

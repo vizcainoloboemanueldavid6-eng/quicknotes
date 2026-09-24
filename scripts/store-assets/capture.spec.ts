@@ -106,11 +106,24 @@ async function panelShot(harness: ExtensionHarness, popup: CdpTarget): Promise<C
   return panel;
 }
 
+/**
+ * The Web Store wants screenshots as JPEG or 24-bit PNG without alpha: compose
+ * on an RGBA canvas (the popup's shadow is translucent), then drop the alpha
+ * channel in a second pass — sharp would apply removeAlpha() before composite().
+ */
 async function sideBySide(page: Buffer, panel: Buffer, path: string, overlays: OverlayOptions[] = []) {
-  await sharp({ create: { width: WIDTH, height: HEIGHT, channels: 4, background: '#EDE6D6' } })
+  const composed = await sharp({ create: { width: WIDTH, height: HEIGHT, channels: 4, background: '#EDE6D6' } })
     .composite([{ input: page, left: 0, top: 0 }, { input: panel, left: PAGE_WIDTH + 1, top: 0 }, ...overlays])
-    .png({ compressionLevel: 9 })
-    .toFile(path);
+    .png()
+    .toBuffer();
+  await sharp(composed).flatten({ background: '#EDE6D6' }).png({ compressionLevel: 9 }).toFile(path);
+}
+
+/** Rewrites a PNG as 24-bit RGB if it has an alpha channel (Playwright's own screenshots normally do not). */
+async function withoutAlpha(path: string): Promise<void> {
+  if (!(await sharp(path).metadata()).hasAlpha) return;
+  const rgb = await sharp(path).flatten({ background: '#FFFFFF' }).png({ compressionLevel: 9 }).toBuffer();
+  await writeFile(path, rgb);
 }
 
 /** A card with a soft shadow, as the popup appears under the toolbar button. */
@@ -268,8 +281,9 @@ test('store images', async ({ harness }, testInfo) => {
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   // Below the "Try it" card: the list note open, the green one minimized.
   // The green note was created last, so it sits on top: move it first.
-  await place(1, 866, 720);
-  await place(0, 866, 478);
+  const cardBottom = await page.evaluate(() => document.querySelector('aside .card')!.getBoundingClientRect().bottom);
+  await place(1, 866, Math.round(cardBottom) + 230);
+  await place(0, 866, Math.round(cardBottom) + 16);
   await page.locator('[data-qn="note"]').nth(1).getByRole('button', { name: 'Minimize note' }).click();
   await expect.poll(async () => (await harness.demoRecord())?.notes.filter((note) => note.minimized).length).toBe(1);
   await page.mouse.click(20, 400);
@@ -334,8 +348,11 @@ test('store images', async ({ harness }, testInfo) => {
     ['promo-small-440x280.png', 440, 280],
     ['icon-128.png', 128, 128],
   ] as const) {
+    // The icon keeps its transparency; screenshots and the promo tile must not have any.
+    if (file !== 'icon-128.png') await withoutAlpha(join(OUT, file));
     const meta = await sharp(join(OUT, file)).metadata();
     expect({ file, width: meta.width, height: meta.height }).toEqual({ file, width, height });
+    if (file !== 'icon-128.png') expect({ file, channels: meta.channels }).toEqual({ file, channels: 3 });
   }
 
   expect(await harness.allErrors()).toEqual([]);
