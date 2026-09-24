@@ -38,10 +38,22 @@ export function Options() {
 
   useEffect(() => {
     void getSettings().then(setSettings);
-    void chrome.commands
-      .getAll()
-      .then((commands) => setShortcut(commands.find((command) => command.name === 'new-note')?.shortcut ?? ''));
-    return subscribeSettings(setSettings);
+    // Re-read the shortcut whenever the page comes back into view: it is
+    // changed on chrome://extensions/shortcuts, in another tab.
+    const readShortcut = () =>
+      void chrome.commands
+        .getAll()
+        .then((commands) => setShortcut(commands.find((command) => command.name === 'new-note')?.shortcut ?? ''));
+    readShortcut();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') readShortcut();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const unsubscribe = subscribeSettings(setSettings);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      unsubscribe();
+    };
   }, []);
 
   const save = (patch: Partial<Settings>) => {
@@ -129,9 +141,13 @@ export function Options() {
       </Section>
 
       <Section title={t('optionsShortcut')}>
+        <p class="text-[13px] text-ink-soft dark:text-[#cfc8bb]">{t('optionsShortcutHelp')}</p>
         <div class="flex items-center gap-3">
-          <kbd class="rounded border border-paper-line bg-paper px-2 py-1 font-mono text-[13px] dark:border-[#3a352f] dark:bg-[#1f1c19]">
-            {shortcut || '—'}
+          <kbd
+            data-testid="shortcut"
+            class="rounded border border-paper-line bg-paper px-2 py-1 font-mono text-[13px] dark:border-[#3a352f] dark:bg-[#1f1c19]"
+          >
+            {shortcut || t('optionsShortcutUnset')}
           </kbd>
           <button
             type="button"
