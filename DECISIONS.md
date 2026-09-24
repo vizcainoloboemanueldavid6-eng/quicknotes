@@ -295,7 +295,9 @@ a side-by-side configuration error for `chrome.exe`), and branded Chrome ignores
 `Extensions.loadUnpacked`; `--chromium` switches back to the bundled Chromium where it works.
 Because Playwright cannot click the browser toolbar or accept permission prompts, the test copies
 `dist/` to `dist-e2e/` and turns the optional host permissions into granted ones, standing in for
-the `activeTab` grant of a real click and for the user accepting the opt-in prompt.
+the `activeTab` grant of a real click and for the user accepting the opt-in prompt. Playwright does
+not expose extension popups as pages either, so the real popup is opened with
+`chrome.action.openPopup()` and driven through raw CDP target messages.
 
 ---
 

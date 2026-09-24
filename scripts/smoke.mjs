@@ -1,5 +1,8 @@
-// Smoke test of the built extension in a real Chromium (Playwright's bundled
-// build; branded Chrome ignores --load-extension). Run `npm run build` first.
+// Smoke test of the built extension in a real browser. Run `npm run build`
+// first (or use `npm run smoke`, which does). By default it uses the installed
+// Google Chrome and loads the extension through CDP (Extensions.loadUnpacked),
+// because branded Chrome ignores --load-extension; `--chromium` uses
+// Playwright's bundled Chromium with --load-extension instead.
 //
 // The browser toolbar, context menu and keyboard commands cannot be driven
 // from Playwright, and optional permissions cannot be granted without a user
@@ -9,7 +12,7 @@
 // "restore automatically" prompt — then drives the extension through the same
 // messages the popup and side panel send. The page under test ships hostile CSS.
 //
-// Usage: node scripts/smoke.mjs [--headed]
+// Usage: node scripts/smoke.mjs [--headed] [--chromium]
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import { tmpdir } from 'node:os';
@@ -47,6 +50,40 @@ function article() {
 <p id="p3">The answer is 42. Later on, the answer is 42 again.</p>
 ${'<p>Filler paragraph to make the page scroll.</p>'.repeat(40)}
 </article></body></html>`;
+}
+
+/**
+ * Opens the extension's action popup for the active tab and returns a tiny
+ * remote-control handle ({ evaluate, close }), or null if it did not open.
+ */
+async function openPopup(context, worker) {
+  const session = await context.browser().newBrowserCDPSession();
+  await worker.evaluate(() => chrome.action.openPopup());
+  let target;
+  for (let attempt = 0; attempt < 30 && !target; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const { targetInfos } = await session.send('Target.getTargets');
+    target = targetInfos.find((info) => info.url.includes('/src/popup/index.html'));
+  }
+  if (!target) return null;
+  const { sessionId } = await session.send('Target.attachToTarget', { targetId: target.targetId, flatten: false });
+  let sequence = 0;
+  const pending = new Map();
+  session.on('Target.receivedMessageFromTarget', (event) => {
+    const message = JSON.parse(event.message);
+    pending.get(message.id)?.(message);
+  });
+  const send = (method, params) =>
+    new Promise((resolve) => {
+      const id = ++sequence;
+      pending.set(id, resolve);
+      void session.send('Target.sendMessageToTarget', { sessionId, message: JSON.stringify({ id, method, params }) });
+    });
+  return {
+    evaluate: async (expression) =>
+      (await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })).result?.result?.value,
+    close: () => session.send('Target.closeTarget', { targetId: target.targetId }).catch(() => undefined),
+  };
 }
 
 const results = [];
@@ -431,6 +468,34 @@ async function main() {
     await ext.evaluate(() => chrome.storage.sync.remove('settings'));
     await page.locator('[data-qn="note"]').waitFor({ timeout: 5000 });
     check('resuming restores the page', (await page.locator('quicknotes-mark').count()) === 2);
+
+    // --- The real popup ------------------------------------------------------
+    // Playwright does not expose extension popups as pages, so the popup opened
+    // with chrome.action.openPopup() is driven through raw CDP target messages.
+    await page.bringToFront();
+    const popup = await openPopup(context, worker);
+    check('the toolbar popup opens', popup !== null);
+    if (popup) {
+      await page.waitForTimeout(800);
+      const counts = await popup.evaluate(
+        `[document.querySelector('[data-testid="count-highlights"]')?.textContent, document.querySelector('[data-testid="count-notes"]')?.textContent].join('/')`,
+      );
+      check('popup shows the page counts', counts === '2/1', counts);
+      await popup.evaluate(`document.querySelector('input[role="switch"]').click()`);
+      await page.waitForTimeout(700);
+      const pausedFromPopup = await ext.evaluate(
+        async () => (await chrome.storage.sync.get('settings')).settings?.pausedSites ?? [],
+      );
+      check(
+        'popup "Pause on this site" pauses the site',
+        pausedFromPopup.includes('127.0.0.1') && (await page.locator('quicknotes-mark').count()) === 0,
+        JSON.stringify(pausedFromPopup),
+      );
+      await popup.evaluate(`document.querySelector('input[role="switch"]').click()`);
+      await page.locator('[data-qn="note"]').waitFor({ timeout: 5000 });
+      check('popup switch resumes the site', (await page.locator('quicknotes-mark').count()) === 2);
+      await popup.close();
+    }
 
     // --- Opt-in auto restore (registered content script) ------------------
     const registeredScripts = () => ext.evaluate(() => chrome.scripting.getRegisteredContentScripts());
