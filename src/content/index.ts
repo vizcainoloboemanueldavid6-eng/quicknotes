@@ -417,7 +417,11 @@ export class QuickNotesController {
     for (const id of [...this.orphans]) if (!stored.has(id)) this.orphans.delete(id);
     // New highlights (imported, or made in another tab on the same page). Known
     // orphans are left alone; drawHighlights returns early when nothing is new.
+    const knownOrphans = this.orphans.size;
     this.drawHighlights([...stored.values()].filter((highlight) => !this.orphans.has(highlight.id)));
+    // An imported highlight that is not on this page: record and report it like
+    // on a fresh load, so the side panel lists it as orphaned right away.
+    if (this.orphans.size > knownOrphans) this.startOrphanWatch();
 
     const notes = page ? [...page.notes] : [];
     const ids = new Set(notes.map((note) => note.id));
