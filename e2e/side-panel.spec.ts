@@ -5,7 +5,7 @@
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
-import { PASSAGES, selectText, waitForQuickNotes } from './helpers';
+import { PASSAGES, popupReady, selectText, waitForQuickNotes } from './helpers';
 import { expect, test } from './harness';
 
 test.use({ variant: 'hosts' });
@@ -75,6 +75,7 @@ test('"This page": list, scroll to, delete, orphans and Markdown export', async 
   await expect.poll(async () => (await harness.demoRecord())?.notes[0]?.html ?? '').toContain('<b>sample size</b>');
 
   // Open the real side panel from the popup.
+  await popupReady(popup);
   await popup.click('button', 'Open side panel');
   const panel = await harness.attach('/src/sidepanel/index.html');
   await panel.waitFor('document.querySelectorAll("[data-testid=item-highlight]").length === 3');

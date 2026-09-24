@@ -89,16 +89,16 @@ test('automatic restore is opt-in, and revoking the permission turns it off', as
   expect(await registeredScripts(worker)).toEqual([]);
 
   await checkbox.check();
-  await expect.poll(async () => (await registeredScripts(worker)).length).toBe(1);
-  const [script] = await registeredScripts(worker);
-  expect(script).toMatchObject({
-    id: 'quicknotes-auto-restore',
-    js: ['src/content/index.js'],
-    matches: ['http://*/*', 'https://*/*'],
-    runAt: 'document_idle',
-    allFrames: false,
-    persistAcrossSessions: true,
-  });
+  await expect
+    .poll(async () => (await registeredScripts(worker))[0])
+    .toMatchObject({
+      id: 'quicknotes-auto-restore',
+      js: ['src/content/index.js'],
+      matches: ['http://*/*', 'https://*/*'],
+      runAt: 'document_idle',
+      allFrames: false,
+      persistAcrossSessions: true,
+    });
 
   // A new page gets the script without any click.
   const page = await harness.openDemo();

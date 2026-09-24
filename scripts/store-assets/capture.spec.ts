@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp, { type OverlayOptions } from 'sharp';
 import { expect, test, type CdpTarget, type ExtensionHarness } from '../../e2e/harness';
-import { selectText, waitForQuickNotes } from '../../e2e/helpers';
+import { popupReady, selectText, waitForQuickNotes } from '../../e2e/helpers';
 
 test.use({ variant: 'hosts' });
 
@@ -94,6 +94,7 @@ function libraryFile(): string {
 }
 
 async function panelShot(harness: ExtensionHarness, popup: CdpTarget): Promise<CdpTarget> {
+  await popupReady(popup);
   await popup.click('button', 'Open side panel');
   const panel = await harness.attach('/src/sidepanel/index.html');
   await panel.send('Emulation.setDeviceMetricsOverride', {
@@ -306,7 +307,8 @@ test('store images', async ({ harness }, testInfo) => {
     window.scrollTo({ top: heading.getBoundingClientRect().top + window.scrollY - 330, behavior: 'instant' });
   });
   popup = await harness.openPopup(page);
-  await popup.waitFor('document.querySelector("[data-testid=count-notes]")?.textContent === "2"');
+  await popupReady(popup);
+  expect(await popup.text('[data-testid="count-notes"]')).toEqual(['2']);
   await page.waitForTimeout(400);
   const popupImage = await popup.screenshot();
   await sideBySide(

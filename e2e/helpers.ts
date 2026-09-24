@@ -1,5 +1,6 @@
 /** Page-level helpers shared by the end-to-end specs. */
 import type { Page, Worker } from '@playwright/test';
+import type { CdpTarget } from './harness';
 
 export const COLOR_NAMES = { yellow: 'Yellow', green: 'Green', blue: 'Blue', pink: 'Pink' } as const;
 export type ColorKey = keyof typeof COLOR_NAMES;
@@ -99,6 +100,17 @@ export function noteBox(page: Page, id?: string): Promise<{ x: number; y: number
 /** Number of registered (automatic restore) content scripts, read in the service worker. */
 export function registeredScripts(worker: Worker): Promise<chrome.scripting.RegisteredContentScript[]> {
   return worker.evaluate(() => chrome.scripting.getRegisteredContentScripts());
+}
+
+/**
+ * Resolves once the popup has the page's status: its controls stay disabled
+ * until then (the pause switch is enabled last).
+ */
+export async function popupReady(popup: CdpTarget): Promise<void> {
+  await popup.waitFor(
+    '(() => { const s = document.querySelector("input[role=switch]"); return s !== null && !s.disabled; })()',
+    15_000,
+  );
 }
 
 /** Resolves once the content script's UI host exists on the page. */

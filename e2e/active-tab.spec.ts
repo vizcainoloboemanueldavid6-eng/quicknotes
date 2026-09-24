@@ -5,7 +5,7 @@
  * Needs a browser that can click the toolbar button for us
  * (Extensions.triggerAction, recent Chrome).
  */
-import { PASSAGES, markBoxes, noteBox, selectText, waitForQuickNotes } from './helpers';
+import { PASSAGES, markBoxes, noteBox, popupReady, selectText, waitForQuickNotes } from './helpers';
 import { expect, test } from './harness';
 
 test.use({ variant: 'default' });
@@ -24,7 +24,8 @@ test('the toolbar button injects on demand and restores the page after a reload'
   // Click the toolbar button: the popup opens and the script is injected.
   let popup = await harness.clickAction(page);
   await waitForQuickNotes(page);
-  await popup.waitFor('document.querySelector("[data-testid=count-notes]")?.textContent === "0"');
+  await popupReady(popup);
+  expect(await popup.text('[data-testid="count-notes"]')).toEqual(['0']);
   expect(await popup.text('[data-testid="count-highlights"]')).toEqual(['0']);
 
   // "New note" from the popup.
@@ -53,7 +54,8 @@ test('the toolbar button injects on demand and restores the page after a reload'
   await expect(page.locator('[data-qn="note"]')).toBeVisible();
   await expect.poll(() => markBoxes(page)).toEqual(marks);
   expect(await noteBox(page)).toEqual(box);
-  await popup.waitFor('document.querySelector("[data-testid=count-highlights]")?.textContent === "1"');
+  await popupReady(popup);
+  expect(await popup.text('[data-testid="count-highlights"]')).toEqual(['1']);
   expect(await popup.text('[data-testid="count-notes"]')).toEqual(['1']);
 
   // "Open side panel" from the popup (a user gesture) opens the side panel.

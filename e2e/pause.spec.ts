@@ -1,5 +1,5 @@
 /** "Pause on this site" from the popup turns QuickNotes off on the demo's site. */
-import { PASSAGES, registeredScripts, selectText, waitForQuickNotes } from './helpers';
+import { PASSAGES, popupReady, registeredScripts, selectText, waitForQuickNotes } from './helpers';
 import { expect, test } from './harness';
 
 test.use({ variant: 'hosts' });
@@ -28,7 +28,8 @@ test('"Pause on this site" disables the toolbar and the restore, and resuming br
 
   // Pause from the popup.
   let popup = await harness.openPopup(page);
-  await popup.waitFor('document.querySelector("[data-testid=count-notes]")?.textContent === "1"');
+  await popupReady(popup);
+  expect(await popup.text('[data-testid="count-notes"]')).toEqual(['1']);
   await popup.click('input[role="switch"]');
   await expect
     .poll(() =>
@@ -57,7 +58,10 @@ test('"Pause on this site" disables the toolbar and the restore, and resuming br
   await expect(page.locator('quicknotes-root')).toHaveCount(0);
   // …and opening the popup does not inject it either.
   popup = await harness.openPopup(page);
-  await popup.waitFor('document.querySelector("input[role=switch]")?.checked === true');
+  await popupReady(popup);
+  expect(await popup.evaluate(() => document.querySelector<HTMLInputElement>('input[role="switch"]')?.checked)).toBe(
+    true,
+  );
   await page.waitForTimeout(500);
   await expect(page.locator('quicknotes-root')).toHaveCount(0);
   expect((await harness.demoRecord())?.notes).toHaveLength(1);
