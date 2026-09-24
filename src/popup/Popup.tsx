@@ -53,11 +53,17 @@ export function Popup() {
   const [summary, setSummary] = useState<Summary>({ highlights: 0, notes: 0, orphans: 0 });
   const [shortcut, setShortcut] = useState('');
   const [error, setError] = useState(false);
+  // Known even on pages QuickNotes cannot run on, so the side panel ("All notes") opens from anywhere.
+  const [windowId, setWindowId] = useState<number | null>(null);
 
   const supported = tab !== null && isSupportedUrl(tab.url);
   const site = tab ? siteOf(hostOf(tab.url)) : '';
 
   useEffect(() => {
+    void chrome.windows.getCurrent().then(
+      (current) => setWindowId(current.id ?? null),
+      () => setWindowId(null),
+    );
     void (async () => {
       const [current, settings, keys] = await Promise.all([activeTab(), getSettings(), shortcutLabel()]);
       setTab(current);
@@ -97,9 +103,10 @@ export function Popup() {
   };
 
   const openSidePanel = () => {
-    if (!tab) return;
+    const target = tab?.windowId ?? windowId;
+    if (target === null) return;
     // Must run inside the click (user gesture): no await before open().
-    chrome.sidePanel.open({ windowId: tab.windowId }).then(
+    chrome.sidePanel.open({ windowId: target }).then(
       () => window.close(),
       () => setError(true),
     );
@@ -131,7 +138,12 @@ export function Popup() {
       </header>
 
       {loaded && !supported ? (
-        <p class="qn-card p-3 text-[13px] text-ink-soft dark:text-[#cfc8bb]">{t('popupUnsupported')}</p>
+        <>
+          <p class="qn-card p-3 text-[13px] text-ink-soft dark:text-[#cfc8bb]">{t('popupUnsupported')}</p>
+          <button type="button" class="qn-btn-secondary w-full" disabled={windowId === null} onClick={openSidePanel}>
+            {t('popupOpenSidePanel')}
+          </button>
+        </>
       ) : (
         <>
           <p class="truncate text-[12px] text-ink-faint" title={tab?.url}>
@@ -164,7 +176,12 @@ export function Popup() {
             >
               {t('popupNewNote')}
             </button>
-            <button type="button" class="qn-btn-secondary w-full" disabled={!tab} onClick={openSidePanel}>
+            <button
+              type="button"
+              class="qn-btn-secondary w-full"
+              disabled={!tab && windowId === null}
+              onClick={openSidePanel}
+            >
               {t('popupOpenSidePanel')}
             </button>
           </div>

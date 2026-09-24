@@ -52,3 +52,15 @@ test('loads without errors or warnings, asking only for the declared permissions
   expect(info).toEqual({ runtimeErrors: [], manifestErrors: [], installWarnings: [] });
   expect(await harness.allErrors()).toEqual([]);
 });
+
+test('on a page QuickNotes cannot run on, the popup says so and still opens the side panel', async ({ harness }) => {
+  const page = await harness.context.newPage();
+  await page.goto('about:blank');
+  const popup = await harness.openPopup(page);
+  await popup.waitFor('document.body.textContent.includes("can\'t run on this page")');
+  await popup.click('button', 'Open side panel');
+  const panel = await harness.attach('/src/sidepanel/index.html');
+  await panel.click('[data-testid="tab-all"]');
+  await panel.waitFor('document.querySelector("[data-testid=summary]") !== null');
+  expect(await harness.allErrors()).toEqual([]);
+});
