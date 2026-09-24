@@ -223,7 +223,23 @@ function syncAutoRestore(): Promise<Reply<{ registered: boolean }>> {
       persistAcrossSessions: true,
       ...(excludeMatches.length > 0 ? { excludeMatches } : {}),
     };
-    if (existing.length > 0) {
+    const [current] = existing;
+    if (current) {
+      // Settings and permission events often arrive together; leave an identical
+      // registration alone instead of briefly unregistering it (a page loading in
+      // that gap would miss the script).
+      const same = (a: readonly string[] = [], b: readonly string[] = []) =>
+        a.length === b.length && [...a].sort().every((value, i) => value === [...b].sort()[i]);
+      if (
+        same(current.js, script.js) &&
+        same(current.matches, script.matches) &&
+        same(current.excludeMatches, script.excludeMatches) &&
+        current.runAt === script.runAt &&
+        Boolean(current.allFrames) === Boolean(script.allFrames) &&
+        current.persistAcrossSessions !== false
+      ) {
+        return ok({ registered: true });
+      }
       // updateContentScripts cannot clear excludeMatches, so re-register instead.
       await chrome.scripting.unregisterContentScripts({ ids: [AUTO_RESTORE_ID] });
     }
