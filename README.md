@@ -20,7 +20,8 @@ Interface in English and Spanish (follows the browser language).
   highlight to recolor it, attach a note, or delete it.
 - **Sticky notes** — draggable, resizable, minimizable, four paper colors, bold / italic / bulleted
   and numbered lists (<kbd>Ctrl</kbd>+<kbd>B</kbd>, <kbd>Ctrl</kbd>+<kbd>I</kbd>). Positions are
-  stored as percentages of the page size.
+  stored as percentages of the page size. A note holds up to about 100,000 characters: typing or
+  pasting past that is refused with a message, never silently cut.
 - **Robust anchoring** — highlights come back after a reload even when the page changed around them;
   repeated phrases are told apart by their context; highlights whose text is gone are listed as
   _orphaned_ instead of being drawn in the wrong place.
@@ -29,14 +30,17 @@ Interface in English and Spanish (follows the browser language).
   accent-insensitive), color and site filters, per-page delete and export.
 - **Export / import** — Markdown or JSON for the current page or for everything (a normal file
   download); JSON import is validated and merges (see below).
-- **Popup** — counts for the current page, New note, Open side panel, Pause on this site.
+- **Popup** — counts for the current page, New note, Open side panel, Pause on this site (turning
+  it off also resumes a page paused through its parent domain). Files on your computer have no site
+  to pause; when Chrome's "Allow access to file URLs" is off, the popup says how to turn it on.
 - **Keyboard shortcut** — <kbd>Alt</kbd>+<kbd>N</kbd> adds a note to the current page (change it at
   `chrome://extensions/shortcuts`).
 - **Options** — default color, show/hide the selection toolbar, shortcut info, paused sites, opt-in
   automatic restore on every site, light/dark/system theme, and delete-all behind a typed
   confirmation (`DELETE`).
-- **Isolated UI** — everything QuickNotes draws lives in a Shadow DOM: the page's CSS cannot break it
-  and its CSS cannot leak into the page. The demo article proves it with deliberately hostile CSS.
+- **Isolated UI** — everything QuickNotes draws lives in a closed Shadow DOM: the page's CSS cannot
+  break it, its CSS cannot leak into the page, and the page's scripts cannot read or change your
+  notes. The demo article proves it with deliberately hostile CSS.
 
 ## Permissions
 
@@ -77,8 +81,9 @@ must look normal on it anyway.
   and pick a color; add a note; reload the page and click the button again — everything comes back
   in place. With "Restore my notes automatically" enabled in Options, no click is needed.
 - **As a local file:** open `demo/article.html` directly (`file:///…`). Chrome only lets extensions
-  run on `file://` pages after you enable **Allow access to file URLs** on the extension's details
-  page in `chrome://extensions`.
+  run on `file://` pages while **Allow access to file URLs** is on in the extension's details on
+  `chrome://extensions` (Chrome turns it on for an unpacked extension; a Web Store install starts
+  with it off, and the popup says so). A local file has no site, so it cannot be paused.
 - Add `#calm` to the URL (or use the button in the article's sidebar) to switch the hostile CSS off;
   notes are shared by both modes because QuickNotes ignores the URL fragment.
 
@@ -103,10 +108,13 @@ must look normal on it anyway.
 `chrome.storage` mock), anchor serialization and resolution (text changed around a quote, repeated
 quotes, whitespace, XPath fallback, orphans), highlight wrapping, the HTML sanitizer, Markdown
 export, JSON import validation, full-text search and filters, the locale files, and the store
-listing (character limits and image sizes).
+listing (character limits, image sizes, and 24-bit screenshots without alpha).
 
 **End-to-end tests** (`npm run test:e2e`, `@playwright/test` 1.57.0) load the built `dist/` as an
-unpacked extension and use `demo/article.html`:
+unpacked extension and use `demo/article.html`. Playwright only reaches into _open_ shadow roots, so
+most specs load a copy of `dist/` in which the content script's single `attachShadow({ mode:
+"closed" })` call is patched to `"open"` (nothing else differs); the install and privacy specs load
+`dist/` exactly as shipped.
 
 - select text → the toolbar appears → highlight in each color; a note with bold text typed with
   <kbd>Ctrl</kbd>+<kbd>B</kbd>, dragged, resized and minimized; reload → highlights and the note
@@ -121,7 +129,15 @@ unpacked extension and use `demo/article.html`:
   validation errors;
 - "Pause on this site" (no toolbar, no restore, badge) and resuming; every Options setting;
   revoking site access on `chrome://extensions` unregisters the automatic-restore script;
-- the context-menu handler, the highlight menu, and a page whose text changed between visits;
+- the context menu's and Alt+N's real listeners (fired in the service worker with the events'
+  `dispatch()`, because automation cannot open Chrome's menu or press a browser shortcut), the
+  highlight menu, and a page whose text changed between visits;
+- in the shipped build, the page's own scripts cannot reach a note (closed shadow root);
+- SVG text and the page's own editors inside a highlighted range are left alone; the toolbar appears
+  on pages that stop `mouseup` from bubbling and stays inside the window at both edges;
+  <kbd>Ctrl</kbd>+<kbd>U</kbd> adds no underline; a 66,000-character paste is kept in full and a
+  paste past the limit is refused;
+- on a local file, the popup explains "Allow access to file URLs" and shows no pause switch;
 - no errors in any extension context (Chrome's own extension error log, the pages, popup and side
   panel), no manifest warnings, and no network APIs in the build.
 
@@ -133,9 +149,10 @@ The harness (`e2e/harness.ts`) picks the browser with `QN_E2E_BROWSER`:
   the extension is loaded through the DevTools method `Extensions.loadUnpacked`;
 - `auto` (default) — Chromium, falling back to Chrome when it cannot start.
 
-The `activeTab` test clicks the toolbar button through `Extensions.triggerAction`, which only recent
-Chrome offers; it is skipped on Chromium 143. `QN_E2E_HEADED=1` shows the browser, `QN_E2E_PORT`
-changes the demo server port (default 4324).
+The `activeTab` spec clicks the toolbar button through `Extensions.triggerAction`, which only recent
+Chrome offers, so it always runs in the installed Chrome, whatever `QN_E2E_BROWSER` says; it is
+skipped only when `QN_E2E_BROWSER=chromium` limits the run to Chromium. `QN_E2E_HEADED=1` shows the
+browser, `QN_E2E_PORT` changes the demo server port (default 4324).
 
 ## Package for the Chrome Web Store
 
@@ -167,7 +184,11 @@ Anything else is reported as orphaned and listed in the side panel. Pages that r
 (single-page apps) are watched for a few seconds before a highlight is declared orphaned.
 
 Highlights are drawn by wrapping the matching text in `<quicknotes-mark>` elements with inline
-`!important` styles; notes, toolbars and menus live in a single Shadow DOM host.
+`!important` styles; notes, toolbars and menus live in a single, closed Shadow DOM host. Text inside
+SVG or MathML and inside the page's own editors (`contenteditable`) is left out of the index and
+never wrapped: a mark there would make a chart label disappear, or end up in what the site saves.
+Known limitation: highlighting part of a text run that is a direct child of a flex or grid
+container splits it into separate layout items, so the container's `gap` shows around the mark.
 
 ## Import and merge strategy
 

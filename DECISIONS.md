@@ -127,8 +127,19 @@ gets a single `excludeMatches` pattern instead of the `*.site` pair.
 ### Top frame only; `file://` works when Chrome allows it
 
 The script is injected into the top frame only; text inside iframes cannot be highlighted in v1.0.
-`file://` pages (such as a local copy of the demo article) work once the user enables "Allow access
-to file URLs" for the extension, which Chrome requires for any extension.
+`file://` pages (such as a local copy of the demo article) work while "Allow access to file URLs" is
+on for the extension (Chrome turns it on for unpacked extensions and off for store installs).
+
+- **Local files cannot be paused.** The pause list holds host names, and a file URL has none, so the
+  popup shows a one-line explanation instead of the "Pause on this site" switch. A special "local
+  files" entry was considered and rejected: files only ever run QuickNotes on the user's own click,
+  so there is nothing automatic to pause.
+- **When file access is off,** Chrome hides a `file://` tab's URL (and title) from the extension
+  even after a toolbar click, so the popup cannot tell a local file from a `chrome://` page. It shows
+  the usual "can't run on this page" text plus a line asking whether this is a file from the
+  computer, with a button to the extension's details page (`chrome://extensions/?id=…`), where the
+  setting lives. When the URL is visible (older Chromium), the popup says it outright and disables
+  New note instead of letting it fail with a generic error.
 
 ### "Highlight with QuickNotes" can fall back to the menu's selection text
 
@@ -200,7 +211,16 @@ elements, so wrapping text never invalidates another highlight's anchor.
 ### How it is resolved
 
 All matching happens on a text index (every text node under `<body>`, skipping `script`, `style`,
-`textarea`, … and the QuickNotes host) and ignores whitespace differences:
+`textarea`, … and the QuickNotes host) and ignores whitespace differences. Two more kinds of text are
+left out, so they are never wrapped in a mark:
+
+- **SVG and MathML** (anything outside the HTML namespace): an HTML element inside an SVG `<text>`
+  is not rendered, so a chart label caught in a selection would disappear.
+- **The page's own editors** (`contenteditable`, except `="false"`): a mark inside a comment box or a
+  CMS editor would end up in whatever the site saves. A selection that ends inside an editor stops
+  where the editor begins.
+
+Resolution:
 
 1. find every occurrence of the quote;
 2. one occurrence → done; several → score each by how much of the stored prefix and suffix matches
@@ -223,7 +243,27 @@ the CSSOM — page stylesheets cannot override them and page CSP does not apply 
 text inside is forced to the dark ink color, because a pastel background under a dark site's white
 text would be unreadable. Whitespace-only text between table rows or list items is not wrapped.
 Overlapping highlights nest; the innermost one wins the color and the click. Clicking a highlight
-inside a link follows the link instead of opening the highlight menu.
+inside a link follows the link instead of opening the highlight menu. Marks are looked up by
+comparing their id attribute as a string, never by building a CSS selector from the id, and
+imported ids are limited to letters, digits, `-` and `_` (what `crypto.randomUUID()` produces).
+
+### Known limitation: text directly inside a flex or grid container
+
+A mark is `display: inline`, but a direct child of a flex or grid container becomes its own layout
+item, so highlighting part of such a text run splits it into items and the container's `gap`
+appears around the mark. This is rare in article text (flex containers normally hold elements, not
+bare text). The alternative — the CSS Custom Highlight API — needs a document-level stylesheet
+(`::highlight()` rules cannot live in the shadow root), its own hit-testing for clicks and a second
+drawing path; not worth it for v1.0.
+
+### The selection toolbar
+
+- It listens for `mouseup`, `mousedown` and `keyup` on `window` in the **capture** phase: many sites
+  stop these events from bubbling (widgets, frameworks that handle events at their root), which would
+  otherwise keep the toolbar from appearing.
+- It is first placed with an estimated width, then re-centered with its measured width (it is wider
+  in Spanish than in English) so it always stays 8 px inside the window, scrollbar excluded. The
+  highlight menu does the same.
 
 ---
 
@@ -232,13 +272,33 @@ inside a link follows the link instead of opening the highlight menu.
 ### One shadow host, isolated both ways
 
 `<quicknotes-root>` is appended to `<html>` (outside `<body>`, whose transforms or overflow would
-otherwise affect it) and hosts everything in an open shadow root. `:host { all: initial !important;
-… }` cuts off inherited styles, and — because `!important` declarations of a shadow tree's `:host`
-rule beat the page's own `!important` rules — survives hostile selectors such as `* { display: none
+otherwise affect it) and hosts everything in a shadow root. `:host { all: initial !important; … }`
+cuts off inherited styles, and — because `!important` declarations of a shadow tree's `:host` rule
+beat the page's own `!important` rules — survives hostile selectors such as `* { display: none
 !important }`. The stylesheet is adopted with `adoptedStyleSheets` (not blocked by page CSP), with a
-`<style>` fallback. Keyboard events are stopped at the shadow boundary so typing in a note never
-triggers the page's own shortcuts. The browser smoke test runs against a page with deliberately
-hostile CSS to prove both directions.
+`<style>` fallback. The end-to-end suite runs against a page with deliberately hostile CSS to prove
+both directions.
+
+### The shadow root is closed
+
+With an open root, any script of the annotated site — its own code, an analytics or
+session-recording tag — could call `host.shadowRoot` and read every note shown on the page, rewrite
+one (saved on blur like a user edit) or click its delete button twice. A closed root returns `null`
+there; only the controller keeps the `ShadowRoot` that `attachShadow()` returned. A page that
+patches `Element.prototype.attachShadow` in its own world cannot catch the call either, because the
+content script runs in an isolated world with its own prototypes. An end-to-end test checks all of
+this against the shipped build.
+
+What the page can still see, stated in PRIVACY.md:
+
+- **Highlights** are part of the page's own DOM (they have to wrap its text).
+- **Keystrokes typed in a note.** Keyboard events are stopped at the shadow boundary, which hides
+  them from every bubble-phase listener of the page, but listeners the page registered on
+  `window`/`document` in the capture phase run before that point. An isolated world cannot keep
+  them out: stopping the event on `window` would also stop it from reaching the note's own editor.
+
+`isTrusted` checks were not added to the note's buttons: with the root closed, page scripts cannot
+reach those elements at all.
 
 ### The injected UI always uses the light paper look
 
@@ -269,6 +329,24 @@ note", or "Show note" when one exists. Deleting a highlight keeps its notes as s
   modal dialog on someone else's web page.
 - Empty notes are kept until deleted — a note created by accident is one click away from gone, while
   a note silently discarded on blur would be surprising.
+- <kbd>Ctrl</kbd>+<kbd>U</kbd> is swallowed: Chrome's built-in underline would show a `<u>` that the
+  whitelist drops on save. The whitelist was not extended because the brief lists bold, italic and
+  lists only.
+
+### Note length: refuse, never cut
+
+A note's stored HTML is capped at 100,000 characters (about as much text: a long article), so one
+note cannot eat the 10 MB `storage.local` quota. The editor enforces it before anything is lost:
+
+- typing, dropping and formatting are refused once the editor's HTML reaches the cap (deleting and
+  undo still work), with a toast;
+- a paste is refused as a whole — the clipboard still has it — when its estimated size (escapes, a
+  `<div></div>` per line, `&nbsp;` for runs of spaces) would cross the cap;
+- if an edit is still over the cap when it is saved, it is **not** saved: the last saved version
+  stays and the toast says so, instead of storing a shortened copy.
+
+The sanitizer's own cap therefore only applies to imported or hand-made data. Even then it keeps as
+much text as fits, with a `<br>` per line, instead of the first fifth as plain text.
 
 ### Orphaned content scripts step aside
 
@@ -356,6 +434,18 @@ orphaned immediately instead of after the next reload.
   using the current window, so "All notes" is reachable from anywhere.
 - The popup's controls stay disabled until the content script has answered with the page's status,
   so a click can never act on a half-loaded state.
+- **"Pause on this site" shows what is saved.** While a change is being written the switch shows the
+  requested position; afterwards it follows the stored list, so a write that did not happen never
+  leaves the switch on. The hint names the entry that pauses the page — which can be a parent domain
+  (`example.com` pauses `blog.example.com`) — and turning the switch off removes every entry that
+  covers the page, so the page is really resumed (Options still removes exactly the entry clicked).
+- **Settings writes can fail** (`storage.sync` allows 8,192 bytes per item, so the paused-sites list
+  holds roughly 300–400 sites). The size is checked before writing; a write that would not fit, or
+  that Chrome rejects, is reported in the popup or at the top of Options, the optimistic change is
+  rolled back to what is stored, and the site input keeps its text. No fixed cap on the number of
+  sites: the byte limit is the real constraint, and the message says what to do.
+- The side panel's "This page" follows the active tab of **its own window** (`currentWindow`), and
+  only that window's tab events: focusing another window no longer retargets it.
 - Options shows the current shortcut from `chrome.commands.getAll()` and re-reads it whenever the
   page becomes visible again, because the shortcut is changed on `chrome://extensions/shortcuts` in
   another tab (the "Change shortcuts" button opens it; extensions may open that page with
@@ -375,7 +465,9 @@ publication. Its hostile stylesheet is the kind real sites ship — universal `!
 `[role=group]` and `[contenteditable]`, and a header, a banner and a vignette at `z-index:
 2147483647`. `#calm` switches the hostile sheet (and the banner describing it) off; the fragment is
 ignored by URL normalization, so both modes share the same notes. `npm run demo` serves it over http
-on port 4323 because `file://` pages need the user to enable "Allow access to file URLs" first.
+on port 4323 because `file://` pages need the user to enable "Allow access to file URLs" first. Its
+"Try it" card tells the reader to click the QuickNotes button after reloading, because the default
+install only restores a page on the next click (see "On-demand injection by default").
 
 ## Verification tooling
 
@@ -396,10 +488,18 @@ falls back to the installed Chrome, loading the extension with the DevTools meth
 
 ### How the tests reach what Playwright cannot
 
+- **The closed shadow root.** Playwright locators only pierce open shadow roots, so the harness
+  loads a copy of `dist/` in which the content script's single `attachShadow({mode:"closed"})` call
+  is replaced by `"open"` (the harness fails if it does not find exactly one). Everything else is the
+  shipped build byte for byte. The install and privacy specs load `dist/` itself, and the privacy
+  spec proves the page cannot reach a note there. A build-time test hook was rejected: it would put
+  test code in the package.
 - **The toolbar button (`activeTab`).** Recent Chrome exposes `Extensions.triggerAction`, a real
-  action click that grants `activeTab` and opens the popup; the activeTab test uses it and is
-  skipped where it is missing (Chromium 143). `chrome.action.openPopup()` opens the popup but grants
-  nothing, so it is only used where host access exists.
+  action click that grants `activeTab` and opens the popup. The activeTab spec is pinned to the
+  installed Chrome (`test.use({ browserKind: 'chrome' })`) so the default install's main path is
+  always tested, and it is skipped only when a run is explicitly limited to Chromium.
+  `chrome.action.openPopup()` opens the popup but grants nothing, so it is only used where host
+  access exists.
 - **The optional host permission.** A headless browser cannot show the permission prompt, so tests
   that need it load a copy of `dist/` (`dist-e2e-hosts/`) whose optional host permissions are
   declared as granted — standing in for the user clicking "Allow". Revocation is real: the tests
@@ -414,8 +514,10 @@ falls back to the installed Chrome, loading the extension with the DevTools meth
   pages and content scripts, manifest errors, install warnings) in addition to console errors of the
   pages, popup and side panel.
 - **The context menu and Alt+N** cannot be triggered from automation (the native menu and
-  browser-level shortcuts are outside the page); their handlers are exercised through the same
-  background messages they use.
+  browser-level shortcuts are outside the page). The tests fire the extension's real
+  `contextMenus.onClicked` and `commands.onCommand` listeners inside the service worker with the
+  events' `dispatch()` method, passing the arguments Chrome passes (click data and the tab). An
+  earlier test-only background message that bypassed the real listener was removed.
 
 `scripts/smoke.mjs` from the first stage was folded into the suite and removed.
 
@@ -426,6 +528,9 @@ harness and saves 1x PNGs. The side panel and popup are captured from their own 
 placed next to / over the page with `sharp`, because a headless browser renders no browser UI. The
 store summary is the manifest description itself (the dashboard takes it from the package), so both
 locales were rewritten to fit 132 characters and mention the four colors, search and Markdown export.
+Screenshots and the promo tile are written as 24-bit PNGs without an alpha channel (the dashboard
+asks for JPEG or 24-bit PNG); the composed ones are flattened in a second `sharp` pass, and both the
+capture and a unit test check the channel count.
 
 ### No fetch in the package
 
@@ -433,3 +538,12 @@ Vite's modulepreload polyfill is disabled (`build.modulePreload.polyfill: false`
 supports modulepreload natively). It only fetched the extension's own chunks, but it put a `fetch()`
 into every extension page; without it the build contains no network API at all, which an end-to-end
 test checks and PRIVACY.md states.
+
+## Git history
+
+Two commits from interrupted work sessions keep their `wip:` messages: `b5039fd` (the first part of
+the "All notes" feature, finished in the `feat(sidepanel)` commit right after it) and `a74ab5e`
+(the paused-site badge, percent-escape URL normalization and the denied-permission checkbox). Folding
+them into conventional commits means rewriting every later commit; that needs the owner's go-ahead,
+so the history was left as it is. The code in both was verified by the later stages (build, lint,
+unit and end-to-end tests).
