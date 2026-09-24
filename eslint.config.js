@@ -53,11 +53,5 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.node } },
     rules: { 'no-console': 'off' },
   },
-  {
-    // Browser-automation scripts also contain code evaluated inside the page
-    // and inside extension pages.
-    files: ['scripts/smoke.mjs'],
-    languageOptions: { globals: { ...globals.node, ...globals.browser, chrome: 'readonly' } },
-  },
   prettier,
 );

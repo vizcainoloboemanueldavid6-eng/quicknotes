@@ -413,7 +413,16 @@ export class ExtensionHarness {
   async openPopup(page: Page): Promise<CdpTarget> {
     await page.bringToFront();
     const worker = await this.worker();
-    await worker.evaluate(() => chrome.action.openPopup());
+    // Chrome refuses while a previous popup is still closing; try again briefly.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await worker.evaluate(() => chrome.action.openPopup());
+        break;
+      } catch (error) {
+        if (attempt >= 10) throw error;
+        await page.waitForTimeout(300);
+      }
+    }
     return this.attach('/src/popup/index.html');
   }
 
