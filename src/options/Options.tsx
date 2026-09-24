@@ -53,9 +53,12 @@ export function Options() {
     setPermissionDenied(false);
     if (enabled) {
       // Must be requested from the click itself (user gesture).
-      const granted = await chrome.permissions.request({ origins: [...HOST_PERMISSION_ORIGINS] });
+      const granted = await chrome.permissions.request({ origins: [...HOST_PERMISSION_ORIGINS] }).catch(() => false);
       if (!granted) {
         setPermissionDenied(true);
+        // A new settings object forces a re-render, which unticks the checkbox
+        // the user just ticked even when nothing else changed.
+        setSettings((current) => ({ ...current, autoRestore: false }));
         return;
       }
       await updateSettings({ autoRestore: true });

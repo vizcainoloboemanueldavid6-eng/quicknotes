@@ -43,6 +43,11 @@ describe('normalizeUrl', () => {
     ['drops a trailing dot on the host', 'https://example.com./a', 'https://example.com/a'],
     ['trims whitespace', '  https://example.com/a  ', 'https://example.com/a'],
     ['handles file URLs', 'file:///C:/demo/article.html#top', 'file:///C:/demo/article.html'],
+    ['upper-cases percent-escapes in the path', 'https://example.com/caf%c3%a9', 'https://example.com/caf%C3%A9'],
+    ['encodes non-ASCII path characters', 'https://example.com/café', 'https://example.com/caf%C3%A9'],
+    ['decodes escaped unreserved characters', 'https://example.com/%7Euser/%41-b%2Ec', 'https://example.com/~user/A-b.c'],
+    ['keeps escaped reserved characters', 'https://example.com/a%2fb%3Fc', 'https://example.com/a%2Fb%3Fc'],
+    ['removes a trailing slash after decoding', 'https://example.com/docs%2F/', 'https://example.com/docs%2F'],
     [
       'only drops the hash of other schemes',
       'chrome-extension://abc/page.html?x=1#y',
@@ -75,6 +80,8 @@ describe('normalizeUrl', () => {
       'https://Example.com:443/a/b/?utm_source=x&z=1&a=2#hash',
       'https://example.com/search?q=a+b&q=c%20d&lang=es',
       'https://example.com/path%20with%20spaces/?x=%E2%9C%93',
+      'https://example.com/%7e%2e%2Fa/caf%c3%a9/',
+      'https://example.com/a/%2E%2E/b/./c',
       'http://localhost:4321/',
       'file:///home/user/demo/article.html',
     ];
@@ -138,6 +145,7 @@ describe('sites and pausing', () => {
 
   it('builds excludeMatches patterns for a paused site', () => {
     expect(matchPatternsForSite('example.com')).toEqual(['*://example.com/*', '*://*.example.com/*']);
+    expect(matchPatternsForSite('127.0.0.1')).toEqual(['*://127.0.0.1/*']);
     expect(matchPatternsForSite('bad site')).toEqual([]);
   });
 

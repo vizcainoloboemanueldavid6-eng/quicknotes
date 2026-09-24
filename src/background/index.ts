@@ -73,10 +73,9 @@ async function runOnTab(tabId: number, url: string | undefined, message: Content
   if (url !== undefined) {
     if (!isSupportedUrl(url)) return fail('unsupported-page');
     const settings = await getSettings();
-    if (isPausedUrl(url, settings.pausedSites)) {
-      await showPausedBadge(tabId);
-      return fail('paused');
-    }
+    const paused = isPausedUrl(url, settings.pausedSites);
+    await setPausedBadge(tabId, paused);
+    if (paused) return fail('paused');
   }
   const injected = await ensureInjected(tabId);
   if (!injected.ok) return injected;
@@ -90,13 +89,48 @@ async function runOnTab(tabId: number, url: string | undefined, message: Content
   }
 }
 
-async function showPausedBadge(tabId: number): Promise<void> {
+// ---------------------------------------------------------------------------
+// "off" badge on paused sites
+// ---------------------------------------------------------------------------
+
+const PAUSED_BADGE = 'off';
+
+/**
+ * Shows "off" on the toolbar button for a tab on a paused site, and removes it
+ * again once the site is resumed. Only the badge QuickNotes set is cleared.
+ */
+async function setPausedBadge(tabId: number, paused: boolean): Promise<void> {
   try {
-    await chrome.action.setBadgeBackgroundColor({ tabId, color: '#8A847C' });
-    await chrome.action.setBadgeText({ tabId, text: 'off' });
+    if (paused) {
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: '#8A847C' });
+      await chrome.action.setBadgeText({ tabId, text: PAUSED_BADGE });
+    } else if ((await chrome.action.getBadgeText({ tabId })) === PAUSED_BADGE) {
+      await chrome.action.setBadgeText({ tabId, text: '' });
+    }
   } catch {
     // The tab may be gone.
   }
+}
+
+/**
+ * Brings the badge of every tab whose URL the extension may see (tabs the user
+ * acted on, or every tab once the optional host permission is granted) in line
+ * with the paused-sites list.
+ */
+async function refreshBadges(pausedSites: readonly string[]): Promise<void> {
+  let tabs: chrome.tabs.Tab[];
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch {
+    return;
+  }
+  await Promise.all(
+    tabs.map((tab) =>
+      tab.id !== undefined && tab.url
+        ? setPausedBadge(tab.id, isSupportedUrl(tab.url) && isPausedUrl(tab.url, pausedSites))
+        : Promise.resolve(),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -247,8 +281,12 @@ async function handle(message: BackgroundMessage): Promise<Reply<unknown>> {
   switch (message.type) {
     case 'qn:bg:inject': {
       const url = await tabUrl(message.tabId);
-      if (url !== undefined && !isSupportedUrl(url)) return fail('unsupported-page');
-      if (url !== undefined && isPausedUrl(url, (await getSettings()).pausedSites)) return fail('paused');
+      if (url !== undefined) {
+        if (!isSupportedUrl(url)) return fail('unsupported-page');
+        const paused = isPausedUrl(url, (await getSettings()).pausedSites);
+        await setPausedBadge(message.tabId, paused);
+        if (paused) return fail('paused');
+      }
       return ensureInjected(message.tabId);
     }
     case 'qn:bg:get-status': {
@@ -290,13 +328,21 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => void syncAutoRestore());
 
-subscribeSettings(() => {
+subscribeSettings((settings) => {
   void syncAutoRestore();
   void refreshMenuState();
+  void refreshBadges(settings.pausedSites);
 });
 
 chrome.tabs.onActivated.addListener(() => void refreshMenuState());
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
-  if (changeInfo.url !== undefined || changeInfo.status === 'complete') void refreshMenuState();
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url === undefined && changeInfo.status !== 'complete') return;
+  void refreshMenuState();
+  const url = tab.url;
+  if (url) {
+    void getSettings().then((settings) =>
+      setPausedBadge(tabId, isSupportedUrl(url) && isPausedUrl(url, settings.pausedSites)),
+    );
+  }
 });
 chrome.windows.onFocusChanged.addListener(() => void refreshMenuState());

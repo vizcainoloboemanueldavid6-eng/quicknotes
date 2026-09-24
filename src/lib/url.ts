@@ -13,6 +13,10 @@
  *  5. The remaining query parameters are sorted by name (stable, so repeated
  *     names keep their relative order) and re-serialized; an empty query is dropped.
  *  6. Trailing slashes are removed from the path, except for the root path "/".
+ *  7. Percent-escapes in the path are normalized (RFC 3986 §6.2.2): escapes of
+ *     unreserved characters (letters, digits, "-", ".", "_", "~") are decoded
+ *     and every other escape gets upper-case hex digits, so "/caf%c3%a9",
+ *     "/caf%C3%A9" and "/café" are the same page, as are "/%7Euser" and "/~user".
  *
  * Other schemes are returned with only the fragment removed. Strings that are not
  * URLs at all are returned trimmed.
@@ -71,6 +75,16 @@ export const HOST_PERMISSION_ORIGINS: readonly string[] = Object.freeze(['http:/
 
 const NORMALIZED_PROTOCOLS = new Set(['http:', 'https:', 'file:']);
 
+const UNRESERVED = /^[A-Za-z0-9\-._~]$/;
+
+/** Decodes escapes of unreserved characters and upper-cases the hex digits of the rest. */
+function normalizePercentEncoding(path: string): string {
+  return path.replace(/%([0-9a-fA-F]{2})/g, (_match, hex: string) => {
+    const char = String.fromCharCode(Number.parseInt(hex, 16));
+    return UNRESERVED.test(char) ? char : `%${hex.toUpperCase()}`;
+  });
+}
+
 export function normalizeUrl(input: string): string {
   const raw = input.trim();
   let url: URL;
@@ -98,7 +112,7 @@ export function normalizeUrl(input: string): string {
   kept.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   const search = new URLSearchParams(kept).toString();
 
-  let path = url.pathname;
+  let path = normalizePercentEncoding(url.pathname);
   if (path.length > 1 && path.endsWith('/')) {
     path = path.replace(/\/+$/, '') || '/';
   }
@@ -160,8 +174,14 @@ export function isSupportedUrl(input: string | undefined): boolean {
   }
 }
 
-/** Match patterns covering a paused site and all of its subdomains (for excludeMatches). */
+const IPV4_PATTERN = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+
+/**
+ * Match patterns covering a paused site and all of its subdomains (for
+ * excludeMatches). An IP address has no subdomains, so it gets one pattern.
+ */
 export function matchPatternsForSite(site: string): string[] {
   if (!SITE_PATTERN.test(site)) return [];
+  if (IPV4_PATTERN.test(site)) return [`*://${site}/*`];
   return [`*://${site}/*`, `*://*.${site}/*`];
 }
