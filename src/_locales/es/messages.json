@@ -1,0 +1,144 @@
+{
+  "extName": {
+    "message": "QuickNotes: resaltados y notas adhesivas",
+    "description": "Nombre de la extensión (máx. 45 caracteres)."
+  },
+  "extShortName": {
+    "message": "QuickNotes",
+    "description": "Nombre corto de la extensión."
+  },
+  "extDescription": {
+    "message": "Resalta texto y pega notas adhesivas en cualquier página web. Todo se queda en tu dispositivo.",
+    "description": "Descripción de la extensión (máx. 132 caracteres)."
+  },
+  "actionTitle": {
+    "message": "QuickNotes",
+    "description": "Texto emergente del botón de la barra de herramientas."
+  },
+  "commandNewNote": {
+    "message": "Añadir una nota adhesiva a esta página",
+    "description": "Descripción del atajo de teclado en chrome://extensions/shortcuts."
+  },
+  "contextHighlight": {
+    "message": "Resaltar con QuickNotes",
+    "description": "Opción del menú contextual al seleccionar texto."
+  },
+
+  "colorYellow": { "message": "Amarillo" },
+  "colorGreen": { "message": "Verde" },
+  "colorBlue": { "message": "Azul" },
+  "colorPink": { "message": "Rosa" },
+
+  "toolbarLabel": {
+    "message": "QuickNotes: resaltar el texto seleccionado",
+    "description": "Nombre accesible de la barra flotante que aparece al seleccionar texto."
+  },
+  "toolbarHighlight": {
+    "message": "Resaltar en $COLOR$",
+    "placeholders": { "color": { "content": "$1", "example": "Amarillo" } }
+  },
+  "toolbarAddNote": { "message": "Añadir nota" },
+
+  "menuLabel": { "message": "Opciones del resaltado" },
+  "menuChangeColor": {
+    "message": "Cambiar el color a $COLOR$",
+    "placeholders": { "color": { "content": "$1", "example": "Verde" } }
+  },
+  "menuAddNote": { "message": "Añadir nota" },
+  "menuShowNote": { "message": "Mostrar nota" },
+  "menuDelete": { "message": "Eliminar resaltado" },
+
+  "noteLabel": { "message": "Nota adhesiva" },
+  "noteEditorLabel": { "message": "Texto de la nota" },
+  "notePlaceholder": { "message": "Escribe una nota…" },
+  "noteMove": { "message": "Arrastra para mover la nota" },
+  "noteResize": { "message": "Arrastra para cambiar el tamaño de la nota" },
+  "noteMinimize": { "message": "Minimizar nota" },
+  "noteExpand": { "message": "Expandir nota" },
+  "noteDelete": { "message": "Eliminar nota" },
+  "noteConfirmDelete": { "message": "Haz clic otra vez para eliminar" },
+  "noteColor": {
+    "message": "Color de la nota: $COLOR$",
+    "placeholders": { "color": { "content": "$1", "example": "Rosa" } }
+  },
+  "noteEmpty": { "message": "Nota vacía" },
+  "formatToolbar": { "message": "Formato del texto" },
+  "formatBold": { "message": "Negrita (Ctrl+B)" },
+  "formatItalic": { "message": "Cursiva (Ctrl+I)" },
+  "formatBulletList": { "message": "Lista con viñetas" },
+  "formatNumberedList": { "message": "Lista numerada" },
+
+  "toastSelectText": { "message": "Primero selecciona texto en la página." },
+  "toastPaused": { "message": "QuickNotes está en pausa en este sitio." },
+  "toastOrphans": {
+    "message": "Resaltados que no se encontraron en esta página: $COUNT$. Aparecen en el panel lateral.",
+    "placeholders": { "count": { "content": "$1", "example": "2" } }
+  },
+  "toastSaveFailed": { "message": "No se pudo guardar el cambio. Puede que el almacenamiento esté lleno." },
+  "toastCannotHighlight": { "message": "Esa selección no se puede resaltar." },
+  "dismiss": { "message": "Cerrar" },
+
+  "popupHighlights": { "message": "Resaltados" },
+  "popupNotes": { "message": "Notas" },
+  "popupNotFound": {
+    "message": "$COUNT$ no encontrados en la página",
+    "placeholders": { "count": { "content": "$1", "example": "1" } }
+  },
+  "popupNewNote": { "message": "Nueva nota" },
+  "popupOpenSidePanel": { "message": "Abrir panel lateral" },
+  "popupPauseSite": { "message": "Pausar en este sitio" },
+  "popupPausedHint": {
+    "message": "Sin barra, resaltados ni notas en $SITE$ mientras esté en pausa.",
+    "placeholders": { "site": { "content": "$1", "example": "example.com" } }
+  },
+  "popupUnsupported": {
+    "message": "QuickNotes no puede funcionar en esta página. Abre un sitio web normal para tomar notas."
+  },
+  "popupOptions": { "message": "Opciones" },
+  "popupShortcutHint": {
+    "message": "Consejo: selecciona texto para resaltarlo o pulsa $SHORTCUT$ para crear una nota.",
+    "placeholders": { "shortcut": { "content": "$1", "example": "Alt+N" } }
+  },
+  "popupError": { "message": "Algo salió mal. Recarga la página e inténtalo de nuevo." },
+
+  "sidePanelTitle": { "message": "QuickNotes" },
+  "sidePanelThisPage": { "message": "Esta página" },
+  "sidePanelNoPage": { "message": "Abre una página web y pulsa el botón de QuickNotes para ver aquí sus notas." },
+  "sidePanelEmpty": { "message": "Esta página aún no tiene resaltados ni notas. Selecciona texto para empezar." },
+  "sidePanelOrphaned": { "message": "No encontrado en la página" },
+
+  "optionsTitle": { "message": "Opciones de QuickNotes" },
+  "optionsDefaultColor": { "message": "Color de resaltado predeterminado" },
+  "optionsShowToolbar": { "message": "Mostrar la barra al seleccionar texto" },
+  "optionsShortcut": { "message": "Atajo de teclado para una nota nueva" },
+  "optionsShortcutChange": { "message": "Cambiar atajos" },
+  "optionsAutoRestore": { "message": "Restaurar mis notas automáticamente en todos los sitios" },
+  "optionsAutoRestoreHelp": {
+    "message": "Desactivado por defecto. Al activarlo, Chrome pide permiso para leer y cambiar datos en todos los sitios, para que los resaltados y las notas reaparezcan en cuanto carga la página. Nada sale nunca de tu dispositivo."
+  },
+  "optionsAutoRestoreDenied": {
+    "message": "No se concedió el permiso, así que la restauración automática sigue desactivada."
+  },
+  "optionsPausedSites": { "message": "Sitios en pausa" },
+  "optionsPausedSitesEmpty": { "message": "No hay sitios en pausa." },
+  "optionsAddSite": { "message": "Añadir sitio" },
+  "optionsSitePlaceholder": { "message": "ejemplo.com" },
+  "optionsInvalidSite": { "message": "Escribe un sitio como ejemplo.com." },
+  "optionsRemoveSite": {
+    "message": "Quitar $SITE$",
+    "placeholders": { "site": { "content": "$1", "example": "ejemplo.com" } }
+  },
+  "optionsTheme": { "message": "Tema" },
+  "optionsThemeSystem": { "message": "Sistema" },
+  "optionsThemeLight": { "message": "Claro" },
+  "optionsThemeDark": { "message": "Oscuro" },
+  "optionsDanger": { "message": "Borrar todos los datos" },
+  "optionsDangerHelp": {
+    "message": "Borra todos los resaltados y notas de todas las páginas y restablece estas opciones. Escribe $WORD$ para confirmar.",
+    "placeholders": { "word": { "content": "$1", "example": "BORRAR" } }
+  },
+  "optionsDangerWord": { "message": "BORRAR" },
+  "optionsDangerButton": { "message": "Borrarlo todo" },
+  "optionsDeleted": { "message": "Se borraron todos los datos." },
+  "optionsSaved": { "message": "Guardado" }
+}

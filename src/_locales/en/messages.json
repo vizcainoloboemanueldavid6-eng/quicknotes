@@ -1,0 +1,140 @@
+{
+  "extName": {
+    "message": "QuickNotes: Highlights & Sticky Notes",
+    "description": "Extension name shown in the Chrome Web Store and chrome://extensions (max 45 characters)."
+  },
+  "extShortName": {
+    "message": "QuickNotes",
+    "description": "Short extension name."
+  },
+  "extDescription": {
+    "message": "Highlight text and pin sticky notes on any web page. Everything stays on your device.",
+    "description": "Extension description (max 132 characters)."
+  },
+  "actionTitle": {
+    "message": "QuickNotes",
+    "description": "Tooltip of the toolbar button."
+  },
+  "commandNewNote": {
+    "message": "Add a sticky note to this page",
+    "description": "Description of the keyboard shortcut in chrome://extensions/shortcuts."
+  },
+  "contextHighlight": {
+    "message": "Highlight with QuickNotes",
+    "description": "Context menu item shown when text is selected."
+  },
+
+  "colorYellow": { "message": "Yellow" },
+  "colorGreen": { "message": "Green" },
+  "colorBlue": { "message": "Blue" },
+  "colorPink": { "message": "Pink" },
+
+  "toolbarLabel": {
+    "message": "QuickNotes: highlight the selected text",
+    "description": "Accessible name of the floating toolbar that appears on text selection."
+  },
+  "toolbarHighlight": {
+    "message": "Highlight in $COLOR$",
+    "placeholders": { "color": { "content": "$1", "example": "Yellow" } }
+  },
+  "toolbarAddNote": { "message": "Add note" },
+
+  "menuLabel": { "message": "Highlight options" },
+  "menuChangeColor": {
+    "message": "Change color to $COLOR$",
+    "placeholders": { "color": { "content": "$1", "example": "Green" } }
+  },
+  "menuAddNote": { "message": "Add note" },
+  "menuShowNote": { "message": "Show note" },
+  "menuDelete": { "message": "Delete highlight" },
+
+  "noteLabel": { "message": "Sticky note" },
+  "noteEditorLabel": { "message": "Note text" },
+  "notePlaceholder": { "message": "Write a note…" },
+  "noteMove": { "message": "Drag to move the note" },
+  "noteResize": { "message": "Drag to resize the note" },
+  "noteMinimize": { "message": "Minimize note" },
+  "noteExpand": { "message": "Expand note" },
+  "noteDelete": { "message": "Delete note" },
+  "noteConfirmDelete": { "message": "Click again to delete" },
+  "noteColor": {
+    "message": "Note color: $COLOR$",
+    "placeholders": { "color": { "content": "$1", "example": "Pink" } }
+  },
+  "noteEmpty": { "message": "Empty note" },
+  "formatToolbar": { "message": "Text formatting" },
+  "formatBold": { "message": "Bold (Ctrl+B)" },
+  "formatItalic": { "message": "Italic (Ctrl+I)" },
+  "formatBulletList": { "message": "Bulleted list" },
+  "formatNumberedList": { "message": "Numbered list" },
+
+  "toastSelectText": { "message": "Select some text on the page first." },
+  "toastPaused": { "message": "QuickNotes is paused on this site." },
+  "toastOrphans": {
+    "message": "Highlights not found on this page: $COUNT$. The side panel lists them.",
+    "placeholders": { "count": { "content": "$1", "example": "2" } }
+  },
+  "toastSaveFailed": { "message": "Your change could not be saved. Storage may be full." },
+  "toastCannotHighlight": { "message": "That selection can't be highlighted." },
+  "dismiss": { "message": "Dismiss" },
+
+  "popupHighlights": { "message": "Highlights" },
+  "popupNotes": { "message": "Notes" },
+  "popupNotFound": {
+    "message": "$COUNT$ not found on the page",
+    "placeholders": { "count": { "content": "$1", "example": "1" } }
+  },
+  "popupNewNote": { "message": "New note" },
+  "popupOpenSidePanel": { "message": "Open side panel" },
+  "popupPauseSite": { "message": "Pause on this site" },
+  "popupPausedHint": {
+    "message": "No toolbar, highlights or notes on $SITE$ while paused.",
+    "placeholders": { "site": { "content": "$1", "example": "example.com" } }
+  },
+  "popupUnsupported": { "message": "QuickNotes can't run on this page. Open a regular website to take notes." },
+  "popupOptions": { "message": "Options" },
+  "popupShortcutHint": {
+    "message": "Tip: select text to highlight it, or press $SHORTCUT$ for a new note.",
+    "placeholders": { "shortcut": { "content": "$1", "example": "Alt+N" } }
+  },
+  "popupError": { "message": "Something went wrong. Reload the page and try again." },
+
+  "sidePanelTitle": { "message": "QuickNotes" },
+  "sidePanelThisPage": { "message": "This page" },
+  "sidePanelNoPage": { "message": "Open a web page and click the QuickNotes button to see its notes here." },
+  "sidePanelEmpty": { "message": "No highlights or notes on this page yet. Select some text to start." },
+  "sidePanelOrphaned": { "message": "Not found on the page" },
+
+  "optionsTitle": { "message": "QuickNotes options" },
+  "optionsDefaultColor": { "message": "Default highlight color" },
+  "optionsShowToolbar": { "message": "Show the toolbar when I select text" },
+  "optionsShortcut": { "message": "Keyboard shortcut for a new note" },
+  "optionsShortcutChange": { "message": "Change shortcuts" },
+  "optionsAutoRestore": { "message": "Restore my notes automatically on every site" },
+  "optionsAutoRestoreHelp": {
+    "message": "Off by default. When on, Chrome asks for permission to read and change data on all sites so highlights and notes can reappear as soon as a page loads. Nothing ever leaves your device."
+  },
+  "optionsAutoRestoreDenied": { "message": "Permission was not granted, so automatic restore stays off." },
+  "optionsPausedSites": { "message": "Paused sites" },
+  "optionsPausedSitesEmpty": { "message": "No paused sites." },
+  "optionsAddSite": { "message": "Add site" },
+  "optionsSitePlaceholder": { "message": "example.com" },
+  "optionsInvalidSite": { "message": "Enter a site such as example.com." },
+  "optionsRemoveSite": {
+    "message": "Remove $SITE$",
+    "placeholders": { "site": { "content": "$1", "example": "example.com" } }
+  },
+  "optionsTheme": { "message": "Theme" },
+  "optionsThemeSystem": { "message": "System" },
+  "optionsThemeLight": { "message": "Light" },
+  "optionsThemeDark": { "message": "Dark" },
+  "optionsDanger": { "message": "Delete all data" },
+  "optionsDangerHelp": {
+    "message": "Deletes every highlight and note on every page, and resets these options. Type $WORD$ to confirm.",
+    "placeholders": { "word": { "content": "$1", "example": "DELETE" } }
+  },
+  "optionsDangerWord": { "message": "DELETE" },
+  "optionsDangerButton": { "message": "Delete everything" },
+  "optionsDeleted": { "message": "All data deleted." },
+  "optionsSaved": { "message": "Saved" }
+}

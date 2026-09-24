@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>QuickNotes</title>
+  <!-- Soft paper shadow -->
+  <path d="M22 18h82a8 8 0 0 1 8 8v58l-32 32H22a8 8 0 0 1-8-8V26a8 8 0 0 1 8-8z" fill="#1C1917" opacity="0.14" transform="translate(3 5)"/>
+  <!-- Note body with the bottom-right corner folded -->
+  <path d="M22 12h84a8 8 0 0 1 8 8v62l-34 34H22a8 8 0 0 1-8-8V20a8 8 0 0 1 8-8z" fill="#F2B705"/>
+  <!-- Folded corner -->
+  <path d="M114 82H90a10 10 0 0 0-10 10v24z" fill="#C99400"/>
+  <path d="M114 82H90a10 10 0 0 0-10 10v24" fill="none" stroke="#FFF4CC" stroke-width="2" stroke-linejoin="round" opacity="0.55"/>
+  <!-- Text lines -->
+  <rect x="30" y="34" width="62" height="10" rx="5" fill="#FFFDF7"/>
+  <rect x="30" y="56" width="68" height="10" rx="5" fill="#FFFDF7" opacity="0.92"/>
+  <rect x="30" y="78" width="38" height="10" rx="5" fill="#FFFDF7" opacity="0.85"/>
+</svg>

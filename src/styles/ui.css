@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-paper font-sans text-[14px] text-ink antialiased dark:bg-[#1f1c19] dark:text-[#f5f1e8];
+  }
+
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-primary-dark;
+  }
+}
+
+@layer components {
+  .qn-btn {
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-[14px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .qn-btn-primary {
+    @apply qn-btn bg-primary text-ink hover:bg-[#e0a800];
+  }
+
+  .qn-btn-secondary {
+    @apply qn-btn border border-paper-line bg-white text-ink hover:bg-primary-soft dark:border-[#3a352f] dark:bg-[#2a2622] dark:text-[#f5f1e8] dark:hover:bg-[#35302a];
+  }
+
+  .qn-card {
+    @apply rounded-xl border border-paper-line bg-white shadow-paper dark:border-[#3a352f] dark:bg-[#2a2622];
+  }
+}
