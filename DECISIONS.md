@@ -37,6 +37,13 @@ Both share `tailwind.preset.js` (paper palette, primary `#F2B705`, system font s
 site with `html { font-size: 10px }` would shrink every rem-based size by 37 %. A small PostCSS step
 in `postcss.config.js` rewrites every `rem` value to pixels (16 px = 1 rem).
 
+### Shadow utilities are called `soft`, not `paper`
+
+The preset has a `paper` color, so a `paper` box shadow would make `shadow-paper` two utilities at
+once — the shadow and a shadow _color_ (`#FFFDF7`) generated later in the file, which replaced the
+soft dark shadow with a near-white one (invisible on light pages, a glow on dark ones). The shadows
+are `shadow-soft` and `shadow-soft-lg`; an end-to-end test checks a note's computed shadow.
+
 ### TypeScript 6.0, not 7.0
 
 `typescript-eslint` 8.70 (the current release) supports TypeScript `< 6.1`. Type-aware linting is
@@ -82,6 +89,10 @@ This is the main trade-off of the extension.
 
 Opening the popup injects the script (unless the site is paused): opening it is the user's action
 on that tab, and seeing the page's notes come back is what they expect.
+
+The registration is only replaced when it actually changes (for example a new paused site in
+`excludeMatches`). Settings and permission events often arrive together, and re-registering on each
+one left short gaps in which a loading page got no script.
 
 ### The content script is a single IIFE file, and it is not web-accessible
 
@@ -340,7 +351,11 @@ orphaned immediately instead of after the next reload.
 ## Popup and options
 
 - The popup's "Open side panel" calls `chrome.sidePanel.open()` synchronously inside the click
-  handler (the API requires a user gesture) and closes the popup.
+  handler (the API requires a user gesture) and closes the popup. On pages QuickNotes cannot run on
+  (new tab, `chrome://` pages, the Web Store) the popup says so but still offers "Open side panel",
+  using the current window, so "All notes" is reachable from anywhere.
+- The popup's controls stay disabled until the content script has answered with the page's status,
+  so a click can never act on a half-loaded state.
 - Options shows the current shortcut from `chrome.commands.getAll()` and re-reads it whenever the
   page becomes visible again, because the shortcut is changed on `chrome://extensions/shortcuts` in
   another tab (the "Change shortcuts" button opens it; extensions may open that page with
