@@ -191,13 +191,19 @@
 
   "optionsTitle": { "message": "QuickNotes options" },
   "optionsDefaultColor": { "message": "Default highlight color" },
+  "optionsToolbarTitle": { "message": "Selection toolbar" },
   "optionsShowToolbar": { "message": "Show the toolbar when I select text" },
+  "optionsShowToolbarHelp": {
+    "message": "The color buttons and \"Add note\" appear next to the text you select. When this is off, you can still highlight: right-click the selection and choose \"$ITEM$\".",
+    "placeholders": { "item": { "content": "$1", "example": "Highlight with QuickNotes" } }
+  },
   "optionsShortcut": { "message": "Keyboard shortcut for a new note" },
   "optionsShortcutChange": { "message": "Change shortcuts" },
   "optionsShortcutHelp": {
     "message": "Adds a sticky note to the page you are on. Chrome manages extension shortcuts: to change or remove it, open chrome://extensions/shortcuts."
   },
   "optionsShortcutUnset": { "message": "Not set" },
+  "optionsAutoRestoreTitle": { "message": "Automatic restore" },
   "optionsAutoRestore": { "message": "Restore my notes automatically on every site" },
   "optionsAutoRestoreHelp": {
     "message": "Off by default. When on, Chrome asks for permission to read and change data on all sites so highlights and notes can reappear as soon as a page loads. Nothing ever leaves your device."

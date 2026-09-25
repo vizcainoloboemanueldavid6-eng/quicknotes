@@ -62,6 +62,13 @@ describe('locales', () => {
     }
   });
 
+  it('Options section titles name the feature, not repeat the checkbox under them', () => {
+    for (const messages of [EN, ES]) {
+      expect(messages.optionsToolbarTitle?.message).not.toBe(messages.optionsShowToolbar?.message);
+      expect(messages.optionsAutoRestoreTitle?.message).not.toBe(messages.optionsAutoRestore?.message);
+    }
+  });
+
   it('t() substitutes placeholders and falls back to the key', () => {
     expect(t('toolbarHighlight', 'yellow')).toBe('Highlight in yellow');
     expect(t('toastOrphans', '2')).toBe('Highlights not found on this page: 2. The side panel lists them.');

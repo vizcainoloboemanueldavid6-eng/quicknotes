@@ -34,6 +34,39 @@ function Section({ title, children }: { title: string; children: ComponentChildr
   );
 }
 
+interface ToggleProps {
+  id: string;
+  /** What ticking the box does ("Show the toolbar when I select text"); the section title names the feature. */
+  label: string;
+  /** Read by screen readers as the checkbox's description, not as part of its name. */
+  help: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+function Toggle({ id, label, help, checked, onChange }: ToggleProps) {
+  return (
+    <div class="flex items-start gap-3">
+      <input
+        id={id}
+        type="checkbox"
+        class="mt-1"
+        checked={checked}
+        aria-describedby={`${id}-help`}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+      <div>
+        <label for={id} class="block cursor-pointer font-medium">
+          {label}
+        </label>
+        <p id={`${id}-help`} class="text-[13px] text-ink-soft dark:text-[#cfc8bb]">
+          {help}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function Options() {
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
   const [shortcut, setShortcut] = useState('');
@@ -166,15 +199,14 @@ export function Options() {
         </div>
       </Section>
 
-      <Section title={t('optionsShowToolbar')}>
-        <label class="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={settings.showToolbar}
-            onChange={(event) => save({ showToolbar: event.currentTarget.checked })}
-          />
-          {t('optionsShowToolbar')}
-        </label>
+      <Section title={t('optionsToolbarTitle')}>
+        <Toggle
+          id="show-toolbar"
+          label={t('optionsShowToolbar')}
+          help={t('optionsShowToolbarHelp', t('contextHighlight'))}
+          checked={settings.showToolbar}
+          onChange={(checked) => save({ showToolbar: checked })}
+        />
       </Section>
 
       <Section title={t('optionsShortcut')}>
@@ -196,19 +228,16 @@ export function Options() {
         </div>
       </Section>
 
-      <Section title={t('optionsAutoRestore')}>
-        <label class="flex items-start gap-3">
-          <input
-            type="checkbox"
-            class="mt-1"
-            checked={settings.autoRestore}
-            onChange={(event) => void toggleAutoRestore(event.currentTarget.checked)}
-          />
-          <span>
-            <span class="block font-medium">{t('optionsAutoRestore')}</span>
-            <span class="block text-[13px] text-ink-soft dark:text-[#cfc8bb]">{t('optionsAutoRestoreHelp')}</span>
-          </span>
-        </label>
+      <Section title={t('optionsAutoRestoreTitle')}>
+        <Toggle
+          id="auto-restore"
+          label={t('optionsAutoRestore')}
+          help={t('optionsAutoRestoreHelp')}
+          checked={settings.autoRestore}
+          // toggleAutoRestore requests the permission before its first await,
+          // so the request still runs inside this click's user gesture.
+          onChange={(checked) => void toggleAutoRestore(checked)}
+        />
         {permissionDenied && (
           <p class="text-[13px] text-amber-800 dark:text-amber-300">{t('optionsAutoRestoreDenied')}</p>
         )}

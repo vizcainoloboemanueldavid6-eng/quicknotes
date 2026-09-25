@@ -1,5 +1,5 @@
 /** The options page, and the effect of each setting on the demo page. */
-import { PASSAGES, registeredScripts, selectText, waitForQuickNotes } from './helpers';
+import { PASSAGES, clickHighlightMenuItem, registeredScripts, selectText, waitForQuickNotes } from './helpers';
 import { expect, test } from './harness';
 
 test.use({ variant: 'hosts' });
@@ -36,19 +36,29 @@ test('default color, selection toolbar, shortcut, paused sites and theme', async
   await expect.poll(async () => (await harness.demoRecord())?.notes[0]?.color).toBe('green');
   await page.keyboard.press('Escape');
 
-  // Hiding the selection toolbar.
+  // Hiding the selection toolbar. The section names the feature; the checkbox
+  // says what ticking it does, with the help text as its description.
   await options.bringToFront();
-  await options.getByRole('checkbox', { name: 'Show the toolbar when I select text' }).uncheck();
+  await expect(options.getByRole('heading', { name: 'Selection toolbar', exact: true })).toBeVisible();
+  const toolbarBox = options.getByRole('checkbox', { name: 'Show the toolbar when I select text', exact: true });
+  await expect(toolbarBox).toHaveAccessibleDescription(
+    /you can still highlight: right-click the selection and choose "Highlight with QuickNotes"\.$/,
+  );
+  await toolbarBox.uncheck();
   await expect.poll(async () => (await settings())?.showToolbar).toBe(false);
   await page.bringToFront();
   await selectText(page, PASSAGES.green.selector, PASSAGES.green.text);
   await page.waitForTimeout(500);
   await expect(page.locator('[data-qn="toolbar"]')).toHaveCount(0);
+  // …and, as the help text says, the context menu still highlights.
+  await clickHighlightMenuItem(await harness.worker(), harness.demoUrl, PASSAGES.green.text);
+  await expect(page.locator('quicknotes-mark[data-qn-color="green"]', { hasText: PASSAGES.green.text })).toHaveCount(1);
+  await expect.poll(async () => (await harness.demoRecord())?.highlights.length).toBe(2);
   await options.bringToFront();
-  await options.getByRole('checkbox', { name: 'Show the toolbar when I select text' }).check();
+  await toolbarBox.check();
   await expect.poll(async () => (await settings())?.showToolbar).toBe(true);
   await page.bringToFront();
-  await selectText(page, PASSAGES.green.selector, PASSAGES.green.text);
+  await selectText(page, PASSAGES.blue.selector, PASSAGES.blue.text);
   await expect(page.locator('[data-qn="toolbar"]')).toBeVisible();
 
   // Paused sites: add (a URL is reduced to its site), reject nonsense, remove.
@@ -84,7 +94,9 @@ test('default color, selection toolbar, shortcut, paused sites and theme', async
 test('automatic restore is opt-in, and revoking the permission turns it off', async ({ harness }) => {
   const options = await harness.extensionPage('src/options/index.html');
   const worker = await harness.worker();
-  const checkbox = options.getByRole('checkbox', { name: /Restore my notes automatically/ });
+  await expect(options.getByRole('heading', { name: 'Automatic restore', exact: true })).toBeVisible();
+  const checkbox = options.getByRole('checkbox', { name: 'Restore my notes automatically on every site', exact: true });
+  await expect(checkbox).toHaveAccessibleDescription(/^Off by default\..*Nothing ever leaves your device\.$/);
   await expect(checkbox).not.toBeChecked();
   expect(await registeredScripts(worker)).toEqual([]);
 

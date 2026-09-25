@@ -199,13 +199,19 @@
 
   "optionsTitle": { "message": "Opciones de QuickNotes" },
   "optionsDefaultColor": { "message": "Color de resaltado predeterminado" },
+  "optionsToolbarTitle": { "message": "Barra de selección" },
   "optionsShowToolbar": { "message": "Mostrar la barra al seleccionar texto" },
+  "optionsShowToolbarHelp": {
+    "message": "Los botones de color y «Añadir nota» aparecen junto al texto que seleccionas. Si la desactivas, puedes seguir resaltando: haz clic derecho en la selección y elige «$ITEM$».",
+    "placeholders": { "item": { "content": "$1", "example": "Resaltar con QuickNotes" } }
+  },
   "optionsShortcut": { "message": "Atajo de teclado para una nota nueva" },
   "optionsShortcutChange": { "message": "Cambiar atajos" },
   "optionsShortcutHelp": {
     "message": "Añade una nota adhesiva a la página en la que estás. Chrome gestiona los atajos de las extensiones: para cambiarlo o quitarlo, abre chrome://extensions/shortcuts."
   },
   "optionsShortcutUnset": { "message": "Sin asignar" },
+  "optionsAutoRestoreTitle": { "message": "Restauración automática" },
   "optionsAutoRestore": { "message": "Restaurar mis notas automáticamente en todos los sitios" },
   "optionsAutoRestoreHelp": {
     "message": "Desactivado por defecto. Al activarlo, Chrome pide permiso para leer y cambiar datos en todos los sitios, para que los resaltados y las notas reaparezcan en cuanto carga la página. Nada sale nunca de tu dispositivo."

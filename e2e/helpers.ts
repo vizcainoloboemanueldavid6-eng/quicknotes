@@ -102,6 +102,29 @@ export function registeredScripts(worker: Worker): Promise<chrome.scripting.Regi
 }
 
 /**
+ * Clicks "Highlight with QuickNotes" in the context menu of the tab showing
+ * `pageUrl`. Playwright cannot open Chrome's native menu, so the service worker
+ * fires the extension's real `contextMenus.onClicked` listeners with the
+ * event's `dispatch()`, passing what Chrome passes (OnClickData and the tab).
+ */
+export function clickHighlightMenuItem(worker: Worker, pageUrl: string, selectionText?: string): Promise<void> {
+  return worker.evaluate(
+    async ({ url, selectionText }) => {
+      const [tab] = await chrome.tabs.query({ url: `${url}*` });
+      if (!tab) throw new Error(`no tab shows ${url}`);
+      const info = {
+        menuItemId: 'quicknotes-highlight',
+        editable: false,
+        pageUrl: tab.url,
+        ...(selectionText ? { selectionText } : {}),
+      };
+      (chrome.contextMenus.onClicked as unknown as { dispatch(...args: unknown[]): void }).dispatch(info, tab);
+    },
+    { url: pageUrl, selectionText },
+  );
+}
+
+/**
  * Resolves once the popup has the page's status: its controls stay disabled
  * until then (the pause switch is enabled last).
  */

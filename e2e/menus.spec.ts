@@ -10,7 +10,7 @@
  */
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { PASSAGES, selectText, waitForQuickNotes } from './helpers';
+import { PASSAGES, clickHighlightMenuItem, selectText, waitForQuickNotes } from './helpers';
 import { expect, test } from './harness';
 
 test.use({ variant: 'hosts' });
@@ -31,20 +31,7 @@ test('context-menu highlighting, the highlight menu, and a page that changed', a
 
   /** Fires the context menu's onClicked listener, as a click on "Highlight with QuickNotes" does. */
   const menuClick = async (selectionText?: string) =>
-    (await worker()).evaluate(
-      async ({ url, selectionText }) => {
-        const [tab] = await chrome.tabs.query({ url: `${url}*` });
-        if (!tab) throw new Error('demo tab not found');
-        const info = {
-          menuItemId: 'quicknotes-highlight',
-          editable: false,
-          pageUrl: tab.url,
-          ...(selectionText ? { selectionText } : {}),
-        };
-        (chrome.contextMenus.onClicked as unknown as DispatchableEvent).dispatch(info, tab);
-      },
-      { url: harness.demoUrl, selectionText },
-    );
+    clickHighlightMenuItem(await worker(), harness.demoUrl, selectionText);
   const setDefaultColor = async (color: string) =>
     (await worker())
       .evaluate(async (defaultColor) => {

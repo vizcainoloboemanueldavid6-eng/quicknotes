@@ -481,6 +481,13 @@ orphaned immediately instead of after the next reload.
   that Chrome rejects, is reported in the popup or at the top of Options, the optimistic change is
   rolled back to what is stored, and the site input keeps its text. No fixed cap on the number of
   sites: the byte limit is the real constraint, and the message says what to do.
+- **An Options section names a feature; its checkbox says what ticking it does.** "Selection
+  toolbar" holds "Show the toolbar when I select text" and "Automatic restore" holds "Restore my
+  notes automatically on every site" (the name README, PRIVACY.md and the store texts use), instead
+  of each title repeating the checkbox right under it. The help line below a checkbox is its
+  accessible description (`aria-describedby`), not part of its name. The toolbar's help says that
+  highlighting still works from the context menu when the toolbar is off; an end-to-end test checks
+  exactly that.
 - The side panel's "This page" follows the active tab of **its own window** (`currentWindow`), and
   only that window's tab events: focusing another window no longer retargets it.
 - Options shows the current shortcut from `chrome.commands.getAll()` and re-reads it whenever the
