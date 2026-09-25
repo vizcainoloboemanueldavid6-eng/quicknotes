@@ -527,13 +527,19 @@ The websocket port is set with `server.ws.port`; Vite 8 deprecates the old `serv
 dev server still prints one "`server.hmr.protocol/host/port/…` is deprecated" line, and it does not
 come from this project's config: `VITE_DEPRECATION_TRACE=1` shows CRXJS 2.7.1's own `crx:hmr` config
 hook writing `server.hmr.host = "localhost"` (`node_modules/@crxjs/vite-plugin/dist/index.mjs`).
-Vite logs a deprecation for any write to `server.hmr.host` after it merges the config, whatever the
-project sets, and the only way to keep CRXJS from writing it — `server.hmr: false` — also leaves its
-live-reload client without a host (it would connect to the extension's own id instead of
-`localhost`). CRXJS 3.0.0 writes `server.ws.host` instead, but moving the build plugin to a new major
-version (out for one day when this was checked) for a one-line notice in dev mode is not worth the
-risk; the notice goes away with the move to CRXJS 3. The live-reload client was checked after the
-change: it connects to `ws://localhost:4321`.
+When Vite merges the config file's `server` block with the command line's server options, it turns
+`server.hmr` into a compatibility object that logs this notice on every write to its old keys, and
+this project needs a `server` block (fixed ports). What was rejected:
+
+- **`server.hmr: false`**, the only value that stops CRXJS from writing the key: its live-reload
+  client then has no host and would connect to the extension's own id instead of `localhost`.
+- **Moving the ports into a plugin hook that runs after CRXJS's**, so the write lands on a plain
+  object: CRXJS would still set the deprecated key; that hides the notice instead of fixing it.
+- **CRXJS 3.0.0**, which writes `server.ws.host` instead: a new major version of the build plugin
+  (out for one day when this was checked) for a one-line notice in dev mode is not worth the risk.
+  The notice goes away with the move to CRXJS 3.
+
+The live-reload client was checked after the change: it connects to `ws://localhost:4321`.
 
 ### End-to-end tests: which browser
 
