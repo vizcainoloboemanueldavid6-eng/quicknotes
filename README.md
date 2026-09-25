@@ -7,6 +7,9 @@ them to Markdown. Everything stays in your browser: no account, no network reque
 
 Interface in English and Spanish (follows the browser language).
 
+**Download:** [QuickNotes 1.0.0 (zip)](https://github.com/vizcainoloboemanueldavid6-eng/quicknotes/releases/tag/v1.0.0)
+— unzip it, open `chrome://extensions`, turn on Developer mode and choose **Load unpacked**.
+
 ![Highlights in four colors, a note with a bulleted list, and the selection toolbar on the demo article](store-assets/screenshot-1-highlight-and-note.png)
 
 | The side panel: everything on this page                                                                               | "All notes": search, filters, and the popup                                                                                     |
