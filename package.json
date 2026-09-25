@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "icons": "node scripts/icons.mjs",
     "zip": "npm run build && node scripts/zip.mjs",
+    "zip:install": "npm run build && node scripts/zip.mjs --install",
     "demo": "node scripts/demo-server.mjs",
     "test:e2e": "npm run build && playwright test",
     "store-assets": "npm run build && playwright test -c playwright.store-assets.config.ts"
