@@ -103,6 +103,29 @@ not needed by either API and would let any website detect the extension by probi
 build plugin removes the entry. The same plugin drops a module copy of the content script that
 CRXJS emits but nothing loads.
 
+### The build's one warning, and why it stays
+
+`npm run build` (and so `zip`, `test:e2e` and `store-assets`) prints "`inlineDynamicImports` option
+is ignored because `codeSplitting: false` is set" while CRXJS builds the IIFE content script. It is
+harmless: the ignored option asks for exactly what `codeSplitting: false` already does, so the
+output is the same single self-contained file.
+
+It cannot be removed from this project's config. CRXJS 2.7.1 builds the IIFE with a nested Vite
+build (`createIifeConfig` in `node_modules/@crxjs/vite-plugin/dist/index.mjs`) that uses
+`configFile: false` and no plugins and hard-codes `output.inlineDynamicImports: true`; Vite 8 adds
+`codeSplitting: false` to every IIFE build, and Rolldown warns when it sees both. Nothing in
+`vite.config.ts` reaches that nested build (it inherits only `root`, `mode`, `resolve`, `define` and
+`esbuild`). CRXJS 3.0.0 still sets the same option, so upgrading would not help either. What was
+rejected:
+
+- **Filtering the message** out of the build output: it would hide the next real warning too.
+- **Patching `node_modules`** (or a patch tool): not config, and silently lost on a fresh install
+  unless another dependency re-applies it.
+- **Building the content script without CRXJS** (our own IIFE build instead of `?script&iife`): it
+  would remove the warning, but it replaces the tested packaging path — the file both
+  `executeScript` and `registerContentScripts` load, and its `vite dev` rebuilds — to silence a
+  cosmetic line. Not worth the risk for v1.0; worth revisiting if CRXJS changes the option.
+
 ### `src/background/service-worker.ts` is the manifest entry
 
 The service-worker logic lives in `src/background/index.ts`, as the spec lays out. The manifest
