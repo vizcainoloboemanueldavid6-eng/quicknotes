@@ -30,10 +30,14 @@
  *    injected UI. Nothing else differs from the shipped build.
  *  - "shipped": dist/ exactly as built (closed shadow root). Used by the install
  *    and privacy specs.
+ *
+ * QN_E2E_EXTENSION_DIR replaces dist/ as the extension under test — for
+ * instance the QuickNotes/ folder of an unzipped QuickNotes-v…-install.zip, to
+ * run the whole suite against exactly what people download.
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   chromium,
@@ -46,7 +50,10 @@ import {
 } from '@playwright/test';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const DIST = join(ROOT, 'dist');
+/** The unpacked extension under test: dist/, or QN_E2E_EXTENSION_DIR. */
+export const EXTENSION_DIR = process.env.QN_E2E_EXTENSION_DIR
+  ? resolve(process.env.QN_E2E_EXTENSION_DIR)
+  : join(ROOT, 'dist');
 export const DEMO_PORT = Number(process.env.QN_E2E_PORT) || 4324;
 const HEADED = process.env.QN_E2E_HEADED === '1';
 
@@ -243,12 +250,12 @@ async function openShadowRootForTests(dir: string): Promise<void> {
   }
 }
 
-/** The directory Chrome loads for a variant: dist/ itself, or a patched copy of it. */
+/** The directory Chrome loads for a variant: the build itself, or a patched copy of it. */
 async function prepareBuild(variant: Variant, shadow: ShadowMode): Promise<string> {
-  if (variant === 'default' && shadow === 'shipped') return DIST;
+  if (variant === 'default' && shadow === 'shipped') return EXTENSION_DIR;
   const dir = join(ROOT, `dist-e2e-${variant}${shadow === 'shipped' ? '-shipped' : ''}`);
   await rm(dir, { recursive: true, force: true });
-  await cp(DIST, dir, { recursive: true });
+  await cp(EXTENSION_DIR, dir, { recursive: true });
   if (variant === 'hosts') {
     const path = join(dir, 'manifest.json');
     const manifest = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;

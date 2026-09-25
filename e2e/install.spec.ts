@@ -1,13 +1,44 @@
 /** The shipped build loads cleanly, with exactly the permissions it declares. */
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { expect, test } from './harness';
+import { EXTENSION_DIR, expect, test } from './harness';
 
 test.use({ variant: 'default', shadow: 'shipped' });
 
+interface PackageModule {
+  INSTALL_FOLDER: string;
+  packageFiles: (dir: string) => Promise<string[]>;
+  packageEntries: (dir: string, folder?: string) => Promise<Array<{ name: string; data?: Buffer }>>;
+}
+
+const packageModule = () => import(new URL('../scripts/package.mjs', import.meta.url).href) as Promise<PackageModule>;
+
+test('the package holds only files the extension uses', async () => {
+  const { packageFiles } = await packageModule();
+  // Throws, listing them, if a file is unused or a file the manifest or a page names is missing.
+  const files = await packageFiles(EXTENSION_DIR);
+  expect(files).toEqual(expect.arrayContaining(['manifest.json', 'service-worker-loader.js', 'src/content/index.js']));
+  expect(files.filter((file) => /\.(map|svg|ts|tsx|md)$|^\.vite\/|test|e2e/.test(file))).toEqual([]);
+});
+
+test('the install zip is one QuickNotes folder; the store zip has manifest.json at its root', async () => {
+  const { INSTALL_FOLDER, packageEntries, packageFiles } = await packageModule();
+  const files = await packageFiles(EXTENSION_DIR);
+  expect(INSTALL_FOLDER).toBe('QuickNotes');
+
+  const install = await packageEntries(EXTENSION_DIR, INSTALL_FOLDER);
+  expect(install.every((entry) => entry.name.startsWith('QuickNotes/'))).toBe(true);
+  expect(install.map((entry) => entry.name)).toContain('QuickNotes/manifest.json');
+  expect(install.filter((entry) => !entry.name.endsWith('/')).map((entry) => entry.name)).toEqual(
+    files.map((file) => `QuickNotes/${file}`),
+  );
+
+  const store = await packageEntries(EXTENSION_DIR);
+  expect(store.map((entry) => entry.name)).toEqual(files);
+});
+
 test('the build contains no network or remote-code APIs', async () => {
-  const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+  const dist = EXTENSION_DIR;
   const files = (await readdir(dist, { recursive: true })).filter((file) => /\.(js|html)$/.test(file));
   expect(files.length).toBeGreaterThan(5);
   const offenders: string[] = [];
