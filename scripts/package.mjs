@@ -7,7 +7,7 @@
 // (a source SVG, a source map, build metadata, a test file) cannot end up in
 // either zip or in the dist/ folder a developer loads.
 //
-// writeZip() is a minimal, dependency-free ZIP writer (deflate via node:zlib,
+// zip() is a minimal, dependency-free ZIP writer (deflate via node:zlib,
 // CRC-32 via zlib.crc32). Entries keep the order they are given and carry a
 // fixed timestamp, so the same build always gives the same bytes.
 import { readdir, readFile } from 'node:fs/promises';
