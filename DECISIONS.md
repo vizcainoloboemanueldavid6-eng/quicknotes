@@ -61,9 +61,10 @@ which a Preact project does not use, so only `rules-of-hooks` and `exhaustive-de
 
 ### Exact versions, no zip library
 
-Every dependency is pinned exactly, as in the other projects. `npm run zip` uses a 100-line ZIP
-writer on top of `node:zlib` (`deflateRawSync`, `crc32`) instead of a dependency; entries are sorted
-and timestamped with a fixed date so the same build always produces the same archive.
+Every dependency is pinned exactly, as in the other projects. `npm run zip` and `npm run zip:install`
+use a small ZIP writer on top of `node:zlib` (`deflateRawSync`, `crc32`, in `scripts/package.mjs`)
+instead of a dependency or the system `zip`; entries are sorted by bytes (not by locale) and
+timestamped with a fixed date, so the same build produces the same archive on every platform.
 
 ---
 
@@ -603,6 +604,80 @@ Vite's modulepreload polyfill is disabled (`build.modulePreload.polyfill: false`
 supports modulepreload natively). It only fetched the extension's own chunks, but it put a `fetch()`
 into every extension page; without it the build contains no network API at all, which an end-to-end
 test checks and PRIVACY.md states.
+
+## Packaging
+
+People who tried the v1.0.0 release reported that the notes said to download
+`quicknotes-v1.0.0.zip` while **Assets** showed three files (GitHub adds "Source code (zip)" and
+"Source code (tar.gz)" to every release, and they cannot be removed); that unzipping it spilled
+`assets/`, `icons/`, `src/`, `_locales/` and `manifest.json` loose, so they could not tell which
+folder to pick in **Load unpacked** and had to gather everything into a folder themselves; and that
+the package contained files they should not need.
+
+### Two zips with the same files
+
+- **`quicknotes-v1.0.0.zip` (`npm run zip`) stays as it was**, for the Chrome Web Store: the
+  dashboard requires `manifest.json` at the root of the archive, and the specification names the
+  file.
+- **`QuickNotes-v1.0.0-install.zip` (`npm run zip:install`)** is the one for the GitHub release: a
+  single top-level folder, `QuickNotes/`, with `manifest.json` inside, which is exactly the folder to
+  choose in **Load unpacked**. The archive lists the folders explicitly as well as the files, so
+  every unzip tool rebuilds the same tree.
+- The folder name has no version. Chrome derives an unpacked extension's id — and so where its notes
+  are stored — from the folder's path; a stable name lets a later version be unzipped over the same
+  folder and keep the notes.
+- Windows' "Extract All" always puts the contents in a folder named after the zip, so on Windows the
+  path is `QuickNotes-v1.0.0-install\QuickNotes`. That cannot be avoided from inside the archive
+  (naming the zip `QuickNotes.zip` would only give `QuickNotes\QuickNotes`), so the release notes
+  say which folder to open. "Extract here" gives `QuickNotes` directly, and so should macOS's
+  Archive Utility, which does not add a folder for an archive with a single top-level folder (not
+  tried on a Mac).
+- Rejected: a `.crx` (Chrome refuses to install one from outside the Web Store); a read-me file
+  inside the zip (it would be a file the extension does not use, in the very folder people load);
+  one zip for both uses (the Web Store needs the manifest at the root, people need one folder).
+- The GitHub release gets only the install zip, and `docs/release-notes-v1.0.0.md` (Spanish first,
+  then English) says to ignore the two "Source code" archives. The Web Store zip goes to the
+  dashboard only; attaching it too would bring back the confusion.
+
+### Only files the extension uses
+
+- `public/icons/icon.svg`, the source of the PNG icons, was copied into the package although nothing
+  uses it. It moved to `design/icon.svg`; `npm run icons` renders the same PNGs from there (checked
+  byte for byte) and the store-image capture reads it for the promo tile.
+- `scripts/package.mjs` decides what goes into both zips by walking the build from `manifest.json`:
+  the paths the manifest names (icons, popup, side panel, options, service worker loader), every
+  `_locales/*/messages.json` (Chrome reads them all because of `default_locale`), the scripts and
+  styles each page loads, each module's imports, and paths passed to the `chrome.*` APIs (the
+  background passes `src/content/index.js` to `chrome.scripting`). A file of the build that nothing
+  reaches is an **error that stops the zip**, not a silent omission, so `dist/` — which developers
+  load directly — stays clean too; so is a file the manifest or a page names that is missing. The
+  build has no source maps (`build.sourcemap: false`) and no `.vite/` metadata; the check would
+  refuse either. An end-to-end test runs the same check.
+- The 22 files that remain: `manifest.json`, `service-worker-loader.js`, four PNG icons, two
+  locales, three pages under `src/`, the content script `src/content/index.js`, and ten built chunks
+  in `assets/`. The `src/` folder holds built pages and the built content script, not source code:
+  CRXJS keeps the manifest's paths (`src/popup/index.html`…). Renaming it would mean moving the HTML
+  entry points or the Vite root, for a cosmetic change that the manifest, the harness and the store
+  images all depend on. Names such as `index.html-CF6CHSAd.js` or `service-worker.ts-0fg5J1QK.js` are
+  generated names of built JavaScript.
+- The `data-testid` attributes in the pages stay (30 short attributes, under 1 KB, no code path):
+  stripping them from the package would mean the end-to-end suite tests a different build from the
+  one people install — the reason the harness patches only a copy of the build for the shadow root.
+
+### How the zips were checked
+
+The install zip was unpacked three ways — `Expand-Archive` (what "Extract All" does), Explorer's own
+zip folder (`Shell.Application` copy), and Python's `zipfile.extractall` into an empty folder (the
+"extract here" case) — and each gave exactly one folder, `QuickNotes`, byte-identical to `dist/`.
+The Web Store zip has `manifest.json` at its root and the same files. The whole end-to-end suite
+then ran with `QN_E2E_EXTENSION_DIR` pointing at the `QuickNotes` folder unpacked by
+`Expand-Archive`, so the service worker, popup, side panel, options and highlighting were tested on
+exactly what people download. A one-off check (not kept in the suite, which already covers the same
+paths) loaded each of the three unpacked folders as shipped, with the closed shadow root: Chrome
+reported the folder itself as the extension's path, the service worker started, options, popup (from
+a real toolbar-button click) and side panel opened, a mouse click on "Highlight in green" in the
+selection toolbar stored and drew the highlight on `demo/article.html`, and Chrome's extension error
+log and every console stayed empty.
 
 ## Git history
 
