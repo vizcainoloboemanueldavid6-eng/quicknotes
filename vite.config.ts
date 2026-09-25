@@ -108,6 +108,8 @@ export default defineConfig({
   server: {
     port: 4320,
     strictPort: true,
-    hmr: { port: 4321 },
+    // The dev websocket (CRXJS live reload). `server.ws` replaces the
+    // deprecated `server.hmr.port`; see DECISIONS.md, "Ports".
+    ws: { port: 4321 },
   },
 });

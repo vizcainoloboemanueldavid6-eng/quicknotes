@@ -487,8 +487,23 @@ install only restores a page on the next click (see "On-demand injection by defa
 
 ### Ports
 
-`npm run dev` uses 4320 (HMR 4321), `npm run demo` 4323, the end-to-end tests and the store-image
-capture 4324. All bind to 127.0.0.1.
+`npm run dev` uses 4320 (its websocket 4321), `npm run demo` 4323, the end-to-end tests and the
+store-image capture 4324. The dev server listens on `localhost` (Vite's default); the others bind to
+127.0.0.1.
+
+### `npm run dev`: `server.ws`, and the deprecation notice that remains
+
+The websocket port is set with `server.ws.port`; Vite 8 deprecates the old `server.hmr.port`. The
+dev server still prints one "`server.hmr.protocol/host/port/…` is deprecated" line, and it does not
+come from this project's config: `VITE_DEPRECATION_TRACE=1` shows CRXJS 2.7.1's own `crx:hmr` config
+hook writing `server.hmr.host = "localhost"` (`node_modules/@crxjs/vite-plugin/dist/index.mjs`).
+Vite logs a deprecation for any write to `server.hmr.host` after it merges the config, whatever the
+project sets, and the only way to keep CRXJS from writing it — `server.hmr: false` — also leaves its
+live-reload client without a host (it would connect to the extension's own id instead of
+`localhost`). CRXJS 3.0.0 writes `server.ws.host` instead, but moving the build plugin to a new major
+version (out for one day when this was checked) for a one-line notice in dev mode is not worth the
+risk; the notice goes away with the move to CRXJS 3. The live-reload client was checked after the
+change: it connects to `ws://localhost:4321`.
 
 ### End-to-end tests: which browser
 
