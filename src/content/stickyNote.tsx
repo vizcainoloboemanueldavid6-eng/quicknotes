@@ -12,7 +12,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { PALETTE } from '../lib/colors';
-import { colorName, t } from '../lib/i18n';
+import { colorNameInSentence, t } from '../lib/i18n';
 import { htmlToText } from '../lib/richtext';
 import { MAX_NOTE_HTML_LENGTH, sanitizeHtml } from '../lib/sanitize';
 import {
@@ -507,8 +507,8 @@ export function StickyNoteView(props: StickyNoteViewProps) {
               key={color}
               type="button"
               class="grid h-6 w-6 place-items-center rounded-full"
-              aria-label={t('noteColor', colorName(color))}
-              title={t('noteColor', colorName(color))}
+              aria-label={t('noteColor', colorNameInSentence(color))}
+              title={t('noteColor', colorNameInSentence(color))}
               aria-pressed={color === note.color}
               onClick={() => setColor(color)}
             >

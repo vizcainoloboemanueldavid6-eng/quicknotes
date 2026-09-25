@@ -9,7 +9,7 @@
 import type { RefObject } from 'preact';
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { PALETTE } from '../lib/colors';
-import { colorName, t } from '../lib/i18n';
+import { colorNameInSentence, t } from '../lib/i18n';
 import { COLORS, type Color } from '../lib/types';
 import { IconNote, IconTrash } from './icons';
 
@@ -133,7 +133,12 @@ export function SelectionToolbar({ position, defaultColor, onHighlight, onAddNot
       onMouseDown={keepSelection}
     >
       {ordered.map((color) => (
-        <Swatch key={color} color={color} label={t('toolbarHighlight', colorName(color))} onSelect={onHighlight} />
+        <Swatch
+          key={color}
+          color={color}
+          label={t('toolbarHighlight', colorNameInSentence(color))}
+          onSelect={onHighlight}
+        />
       ))}
       <span class="mx-1 h-5 w-px bg-paper-line" aria-hidden="true" />
       <button
@@ -186,7 +191,7 @@ export function HighlightMenu({ position, color, hasNote, onColor, onNote, onDel
           key={option}
           color={option}
           pressed={option === color}
-          label={t('menuChangeColor', colorName(option))}
+          label={t('menuChangeColor', colorNameInSentence(option))}
           onSelect={onColor}
         />
       ))}

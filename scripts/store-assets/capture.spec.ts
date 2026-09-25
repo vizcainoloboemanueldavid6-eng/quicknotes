@@ -231,12 +231,12 @@ test('store images', async ({ harness }, testInfo) => {
     await selectText(page, selector, text);
     await page.getByRole('button', { name: `Highlight in ${color}` }).click();
   };
-  await highlight('#intro', 'Readers who keep a pencil in hand tend to remember more', 'Yellow');
-  await highlight('#intro', 'They are having a conversation with it', 'Green');
-  await highlight('#margin-1', 'The margin is the only part of a page that belongs to the reader', 'Blue');
-  await highlight('#margin-2', 'That judgement is what turns reading into learning', 'Pink');
-  await highlight('#forgetting-2', 'one idea per note, written in your own words', 'Yellow');
-  await highlight('#color-list', 'Green for evidence, data and examples', 'Green');
+  await highlight('#intro', 'Readers who keep a pencil in hand tend to remember more', 'yellow');
+  await highlight('#intro', 'They are having a conversation with it', 'green');
+  await highlight('#margin-1', 'The margin is the only part of a page that belongs to the reader', 'blue');
+  await highlight('#margin-2', 'That judgement is what turns reading into learning', 'pink');
+  await highlight('#forgetting-2', 'one idea per note, written in your own words', 'yellow');
+  await highlight('#color-list', 'Green for evidence, data and examples', 'green');
 
   // A note on the blue passage, written with the formatting toolbar.
   await page.locator('quicknotes-mark[data-qn-color="blue"]').first().click();
@@ -260,7 +260,7 @@ test('store images', async ({ harness }, testInfo) => {
   const secondNote = page.locator('[data-qn="note"]').nth(1);
   await expect(secondNote.getByRole('textbox')).toBeFocused();
   await page.keyboard.type('Quote this in the book club summary.');
-  await secondNote.getByRole('button', { name: 'Note color: Green' }).click();
+  await secondNote.getByRole('button', { name: 'Note color: green' }).click();
   await page.keyboard.press('Escape');
   await expect.poll(async () => (await harness.demoRecord())?.notes.length).toBe(2);
 

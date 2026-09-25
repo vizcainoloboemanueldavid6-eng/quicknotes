@@ -3,7 +3,8 @@
  * storage.local / storage.sync (get/set/remove/clear + onChanged, with values
  * deep-cloned the way Chrome serializes them, and sync's 8,192-byte per-item
  * quota enforced the way Chrome enforces it), i18n.getMessage (reading the real
- * English messages.json, placeholders included) and runtime.id.
+ * English messages.json, placeholders included; `messageGetter` builds one for
+ * another locale) and runtime.id.
  */
 import en from '../src/_locales/en/messages.json';
 
@@ -89,16 +90,22 @@ function createArea(name: 'local' | 'sync', onChanged: ReturnType<typeof createE
   };
 }
 
-export function getMessage(key: string, substitutions?: string | string[]): string {
-  const entry = (en as Record<string, Message | undefined>)[key];
-  if (!entry) return '';
-  const subs = substitutions === undefined ? [] : Array.isArray(substitutions) ? substitutions : [substitutions];
-  return entry.message.replace(/\$([A-Za-z0-9_]+)\$/g, (match, name: string) => {
-    const placeholder = entry.placeholders?.[name.toLowerCase()];
-    if (!placeholder) return match;
-    return placeholder.content.replace(/\$(\d)/g, (_m, index: string) => subs[Number(index) - 1] ?? '');
-  });
+/** chrome.i18n.getMessage over one locale's messages.json. */
+export function messageGetter(messages: object) {
+  const table = messages as Record<string, Message | undefined>;
+  return (key: string, substitutions?: string | string[]): string => {
+    const entry = table[key];
+    if (!entry) return '';
+    const subs = substitutions === undefined ? [] : Array.isArray(substitutions) ? substitutions : [substitutions];
+    return entry.message.replace(/\$([A-Za-z0-9_]+)\$/g, (match, name: string) => {
+      const placeholder = entry.placeholders?.[name.toLowerCase()];
+      if (!placeholder) return match;
+      return placeholder.content.replace(/\$(\d)/g, (_m, index: string) => subs[Number(index) - 1] ?? '');
+    });
+  };
 }
+
+export const getMessage = messageGetter(en);
 
 export function createChromeMock() {
   const onChanged = createEvent<ChangeListener>();

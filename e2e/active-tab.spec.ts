@@ -45,7 +45,7 @@ test('the toolbar button injects on demand and restores the page after a reload'
 
   // A highlight from the selection toolbar.
   await selectText(page, PASSAGES.green.selector, PASSAGES.green.text);
-  await page.getByRole('button', { name: 'Highlight in Green' }).click();
+  await page.getByRole('button', { name: 'Highlight in green' }).click();
   await expect(page.locator('quicknotes-mark[data-qn-color="green"]').first()).toBeAttached();
   await expect.poll(async () => (await harness.demoRecord())?.highlights.length).toBe(1);
   const marks = await markBoxes(page);

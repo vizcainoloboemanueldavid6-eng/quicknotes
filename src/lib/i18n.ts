@@ -26,8 +26,29 @@ const COLOR_KEYS: Readonly<Record<Color, MessageKey>> = {
   pink: 'colorPink',
 };
 
+const COLOR_IN_SENTENCE_KEYS: Readonly<Record<Color, MessageKey>> = {
+  yellow: 'colorYellowInSentence',
+  green: 'colorGreenInSentence',
+  blue: 'colorBlueInSentence',
+  pink: 'colorPinkInSentence',
+};
+
+/**
+ * A color's name on its own, as a label ("Yellow", "Amarillo"): the color
+ * chips, the default-color choice, the tag on a listed highlight.
+ */
 export function colorName(color: Color): string {
   return t(COLOR_KEYS[color]);
+}
+
+/**
+ * A color's name for a `$COLOR$` placeholder inside a sentence ("Highlight in
+ * yellow", "Resaltar en amarillo"). Each locale has its own mid-sentence form
+ * instead of lower-casing the label in code: English and Spanish write color
+ * names in lower case there, but a language that capitalizes nouns would not.
+ */
+export function colorNameInSentence(color: Color): string {
+  return t(COLOR_IN_SENTENCE_KEYS[color]);
 }
 
 /** BCP 47 language of the UI (for `lang` attributes). */

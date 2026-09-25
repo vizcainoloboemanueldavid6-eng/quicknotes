@@ -73,8 +73,11 @@ test('context-menu highlighting, the highlight menu, and a page that changed', a
   await page.locator('quicknotes-mark[data-qn-color="yellow"]').first().click();
   const menu = page.locator('[data-qn="highlight-menu"]');
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('button', { name: 'Change color to Yellow' })).toHaveAttribute('aria-pressed', 'true');
-  await menu.getByRole('button', { name: 'Change color to Blue' }).click();
+  await expect(menu.getByRole('button', { name: 'Change color to yellow', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await menu.getByRole('button', { name: 'Change color to blue', exact: true }).click();
   await expect(page.locator('quicknotes-mark[data-qn-color="blue"]')).toHaveText([PASSAGES.yellow.text]);
   const record = await harness.demoRecord();
   const recolored = record?.highlights.find((highlight) => highlight.anchor.quote.exact === PASSAGES.yellow.text);
@@ -99,7 +102,7 @@ test('context-menu highlighting, the highlight menu, and a page that changed', a
 
   // --- The page changes between visits -------------------------------------------
   await selectText(page, PASSAGES.green.selector, PASSAGES.green.text);
-  await page.getByRole('button', { name: 'Highlight in Green' }).click();
+  await page.getByRole('button', { name: 'Highlight in green' }).click();
   await expect.poll(async () => (await harness.demoRecord())?.highlights.length).toBe(2);
 
   // The green sentence is rewritten; the pink one only changes case.

@@ -24,10 +24,20 @@
     "description": "Context menu item shown when text is selected."
   },
 
-  "colorYellow": { "message": "Yellow" },
+  "colorYellow": {
+    "message": "Yellow",
+    "description": "A color name on its own, as a label: color filter chips, the default-color choice, list tags."
+  },
   "colorGreen": { "message": "Green" },
   "colorBlue": { "message": "Blue" },
   "colorPink": { "message": "Pink" },
+  "colorYellowInSentence": {
+    "message": "yellow",
+    "description": "A color name inside a sentence, such as “Highlight in yellow”. Write it the way your language writes it mid-sentence."
+  },
+  "colorGreenInSentence": { "message": "green" },
+  "colorBlueInSentence": { "message": "blue" },
+  "colorPinkInSentence": { "message": "pink" },
 
   "toolbarLabel": {
     "message": "QuickNotes: highlight the selected text",
@@ -35,14 +45,14 @@
   },
   "toolbarHighlight": {
     "message": "Highlight in $COLOR$",
-    "placeholders": { "color": { "content": "$1", "example": "Yellow" } }
+    "placeholders": { "color": { "content": "$1", "example": "yellow" } }
   },
   "toolbarAddNote": { "message": "Add note" },
 
   "menuLabel": { "message": "Highlight options" },
   "menuChangeColor": {
     "message": "Change color to $COLOR$",
-    "placeholders": { "color": { "content": "$1", "example": "Green" } }
+    "placeholders": { "color": { "content": "$1", "example": "green" } }
   },
   "menuAddNote": { "message": "Add note" },
   "menuShowNote": { "message": "Show note" },
@@ -59,7 +69,7 @@
   "noteConfirmDelete": { "message": "Click again to delete" },
   "noteColor": {
     "message": "Note color: $COLOR$",
-    "placeholders": { "color": { "content": "$1", "example": "Pink" } }
+    "placeholders": { "color": { "content": "$1", "example": "pink" } }
   },
   "noteEmpty": { "message": "Empty note" },
   "formatToolbar": { "message": "Text formatting" },

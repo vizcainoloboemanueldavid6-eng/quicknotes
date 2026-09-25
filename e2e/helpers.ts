@@ -2,8 +2,7 @@
 import type { Page, Worker } from '@playwright/test';
 import type { CdpTarget } from './harness';
 
-export const COLOR_NAMES = { yellow: 'Yellow', green: 'Green', blue: 'Blue', pink: 'Pink' } as const;
-export type ColorKey = keyof typeof COLOR_NAMES;
+export type ColorKey = keyof typeof PASSAGES;
 
 /** Passages of demo/article.html used by the tests (each occurs once). */
 export const PASSAGES = {

@@ -380,6 +380,20 @@ Chrome requires them. Its name starts with `crx:` on purpose: during `vite dev` 
 with a Rollup build that only runs plugins with that prefix. A unit test fails if the two languages
 drift apart, if a placeholder is missing, or if the code uses a key that does not exist.
 
+### Color names: a label is capitalized, a word in a sentence is not
+
+A color name plays two roles. Standing alone as a label — the color chips in "All notes", the
+default-color choice in Options, the tag on a listed highlight — it is capitalized: "Yellow",
+"Amarillo". Inside a sentence — the accessible names and tooltips "Highlight in yellow", "Change
+color to green", "Note color: pink" and their Spanish counterparts ("Resaltar en amarillo", "Cambiar
+el color a verde", "Color de la nota: rosa") — it is lower case, as both languages write it.
+
+Each locale has its own `color…InSentence` messages (read through `colorNameInSentence()`) instead of
+the code lower-casing the label: the mid-sentence form belongs to the language (German, for one,
+capitalizes nouns everywhere). English changed along with Spanish — "Highlight in Yellow" was just
+as wrong there. A unit test renders every message with a `$COLOR$` placeholder in both languages and
+scans the source so each of those messages is filled with the in-sentence form.
+
 ---
 
 ## Side panel

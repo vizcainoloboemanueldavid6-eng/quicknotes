@@ -30,7 +30,7 @@ test('default color, selection toolbar, shortcut, paused sites and theme', async
   await popup.close();
   await selectText(page, PASSAGES.yellow.selector, PASSAGES.yellow.text);
   const swatches = page.locator('[data-qn="toolbar"]').getByRole('button', { name: /^Highlight in / });
-  await expect(swatches.first()).toHaveAttribute('aria-label', 'Highlight in Green');
+  await expect(swatches.first()).toHaveAttribute('aria-label', 'Highlight in green');
   await page.getByRole('button', { name: 'Add note' }).click();
   await expect(page.locator('quicknotes-mark[data-qn-color="green"]')).toHaveText([PASSAGES.yellow.text]);
   await expect.poll(async () => (await harness.demoRecord())?.notes[0]?.color).toBe('green');
@@ -133,7 +133,7 @@ test('"Delete all data" needs the typed confirmation', async ({ harness }) => {
   await waitForQuickNotes(page);
   await popup.close();
   await selectText(page, PASSAGES.blue.selector, PASSAGES.blue.text);
-  await page.getByRole('button', { name: 'Highlight in Blue' }).click();
+  await page.getByRole('button', { name: 'Highlight in blue' }).click();
   await expect.poll(async () => (await harness.demoRecord())?.highlights.length).toBe(1);
 
   const options = await harness.extensionPage('src/options/index.html');

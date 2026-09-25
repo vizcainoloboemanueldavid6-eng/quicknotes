@@ -63,7 +63,7 @@ describe('locales', () => {
   });
 
   it('t() substitutes placeholders and falls back to the key', () => {
-    expect(t('toolbarHighlight', 'Yellow')).toBe('Highlight in Yellow');
+    expect(t('toolbarHighlight', 'yellow')).toBe('Highlight in yellow');
     expect(t('toastOrphans', '2')).toBe('Highlights not found on this page: 2. The side panel lists them.');
     expect(t('nonexistentKey' as never)).toBe('nonexistentKey');
   });

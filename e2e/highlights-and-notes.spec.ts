@@ -3,7 +3,7 @@
  * way a user does it (Options → checkbox), then a reload: highlights in all four
  * colors and a formatted, moved, resized and minimized note come back in place.
  */
-import { COLOR_NAMES, PASSAGES, markBoxes, noteBox, selectText, waitForQuickNotes, type ColorKey } from './helpers';
+import { PASSAGES, markBoxes, noteBox, selectText, waitForQuickNotes, type ColorKey } from './helpers';
 import { expect, test } from './harness';
 
 test.use({ variant: 'hosts' });
@@ -28,7 +28,7 @@ test('highlight in every color, edit a note, reload: everything comes back in pl
     const selected = await selectText(page, passage.selector, passage.text);
     expect(selected).toBe(passage.text);
     await expect(toolbar).toBeVisible();
-    await page.getByRole('button', { name: `Highlight in ${COLOR_NAMES[color]}` }).click();
+    await page.getByRole('button', { name: `Highlight in ${color}`, exact: true }).click();
     await expect(page.locator(`quicknotes-mark[data-qn-color="${color}"]`).first()).toBeAttached();
     expect((await page.locator(`quicknotes-mark[data-qn-color="${color}"]`).allTextContents()).join('')).toBe(
       passage.text,

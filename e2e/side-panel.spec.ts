@@ -54,7 +54,7 @@ async function annotateDemo(page: Page): Promise<void> {
   for (const color of ['yellow', 'blue', 'pink'] as const) {
     const passage = PASSAGES[color];
     await selectText(page, passage.selector, passage.text);
-    await page.getByRole('button', { name: `Highlight in ${color[0]!.toUpperCase()}${color.slice(1)}` }).click();
+    await page.getByRole('button', { name: `Highlight in ${color}` }).click();
     await expect(page.locator(`quicknotes-mark[data-qn-color="${color}"]`).first()).toBeAttached();
   }
   await page.locator('quicknotes-mark[data-qn-color="yellow"]').first().click();

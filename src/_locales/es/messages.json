@@ -24,10 +24,20 @@
     "description": "Opción del menú contextual al seleccionar texto."
   },
 
-  "colorYellow": { "message": "Amarillo" },
+  "colorYellow": {
+    "message": "Amarillo",
+    "description": "Nombre de un color por sí solo, como etiqueta: filtros por color, color predeterminado, etiquetas de la lista."
+  },
   "colorGreen": { "message": "Verde" },
   "colorBlue": { "message": "Azul" },
   "colorPink": { "message": "Rosa" },
+  "colorYellowInSentence": {
+    "message": "amarillo",
+    "description": "Nombre de un color dentro de una frase, como «Resaltar en amarillo»: en minúscula."
+  },
+  "colorGreenInSentence": { "message": "verde" },
+  "colorBlueInSentence": { "message": "azul" },
+  "colorPinkInSentence": { "message": "rosa" },
 
   "toolbarLabel": {
     "message": "QuickNotes: resaltar el texto seleccionado",
@@ -35,14 +45,14 @@
   },
   "toolbarHighlight": {
     "message": "Resaltar en $COLOR$",
-    "placeholders": { "color": { "content": "$1", "example": "Amarillo" } }
+    "placeholders": { "color": { "content": "$1", "example": "amarillo" } }
   },
   "toolbarAddNote": { "message": "Añadir nota" },
 
   "menuLabel": { "message": "Opciones del resaltado" },
   "menuChangeColor": {
     "message": "Cambiar el color a $COLOR$",
-    "placeholders": { "color": { "content": "$1", "example": "Verde" } }
+    "placeholders": { "color": { "content": "$1", "example": "verde" } }
   },
   "menuAddNote": { "message": "Añadir nota" },
   "menuShowNote": { "message": "Mostrar nota" },
@@ -59,7 +69,7 @@
   "noteConfirmDelete": { "message": "Haz clic otra vez para eliminar" },
   "noteColor": {
     "message": "Color de la nota: $COLOR$",
-    "placeholders": { "color": { "content": "$1", "example": "Rosa" } }
+    "placeholders": { "color": { "content": "$1", "example": "rosa" } }
   },
   "noteEmpty": { "message": "Nota vacía" },
   "formatToolbar": { "message": "Formato del texto" },

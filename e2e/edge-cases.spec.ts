@@ -78,7 +78,7 @@ test('highlights leave SVG text and page editors alone; the toolbar survives hos
   expect(widthBefore).toBeGreaterThan(50);
   await dragAcross(page, '#before', '#after', 'Text after');
   await expect(toolbar).toBeVisible();
-  await page.getByRole('button', { name: 'Highlight in Yellow' }).click();
+  await page.getByRole('button', { name: 'Highlight in yellow' }).click();
   // (Whitespace between the blocks is wrapped too, harmlessly: it renders nothing.)
   await expect
     .poll(async () => (await page.locator('quicknotes-mark').allTextContents()).filter((text) => text.trim()))
