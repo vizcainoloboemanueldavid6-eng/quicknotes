@@ -7,8 +7,11 @@ them to Markdown. Everything stays in your browser: no account, no network reque
 
 Interface in English and Spanish (follows the browser language).
 
-**Download:** [QuickNotes 1.0.0 (zip)](https://github.com/vizcainoloboemanueldavid6-eng/quicknotes/releases/tag/v1.0.0)
-— unzip it, open `chrome://extensions`, turn on Developer mode and choose **Load unpacked**.
+**Download:** [QuickNotes 1.0.0](https://github.com/vizcainoloboemanueldavid6-eng/quicknotes/releases/tag/v1.0.0) —
+under **Assets**, get **`QuickNotes-v1.0.0-install.zip`** (not the two "Source code" files GitHub
+adds), unzip it, open `chrome://extensions`, turn on Developer mode, click **Load unpacked** and
+choose the **QuickNotes** folder (the one with `manifest.json` inside). Step by step, in Spanish and
+English: [docs/release-notes-v1.0.0.md](docs/release-notes-v1.0.0.md).
 
 ![Highlights in four colors, a note with a bulleted list, and the selection toolbar on the demo article](store-assets/screenshot-1-highlight-and-note.png)
 
@@ -61,7 +64,15 @@ Without the opt-in, a page's notes reappear when you click the QuickNotes button
 
 ## Install (load unpacked)
 
-Requirements: Node.js 22.22+ (developed with Node 24) and Chrome 116+.
+**From the release (no tools needed).** Download `QuickNotes-v1.0.0-install.zip` from the
+[release page](https://github.com/vizcainoloboemanueldavid6-eng/quicknotes/releases/tag/v1.0.0) and
+unzip it: it holds one folder, `QuickNotes/`, with `manifest.json` inside. (Windows' "Extract All"
+puts it inside a folder named after the zip, `QuickNotes-v1.0.0-install/`.) Open
+`chrome://extensions`, enable **Developer mode**, click **Load unpacked** and choose that
+`QuickNotes` folder. Keep the folder where it is: Chrome runs the extension from it. The two
+"Source code" archives GitHub attaches to every release are the repository, not the extension.
+
+**From source.** Requirements: Node.js 22.22+ (developed with Node 24) and Chrome 116+.
 
 ```bash
 npm ci
@@ -102,6 +113,7 @@ must look normal on it anyway.
 | `npm run demo`         | Serves `demo/` on <http://127.0.0.1:4323>.                                                     |
 | `npm run store-assets` | Builds, then captures the Chrome Web Store screenshots and promo tile into `store-assets/`.    |
 | `npm run zip`          | Builds and packs `dist/` into `quicknotes-v1.0.0.zip` with `manifest.json` at the root.        |
+| `npm run zip:install`  | Builds and packs `dist/` into `QuickNotes-v1.0.0-install.zip`: one `QuickNotes/` folder.       |
 | `npm run icons`        | Re-renders `public/icons/icon-{16,32,48,128}.png` from `design/icon.svg`.                      |
 | `npm run format`       | Prettier.                                                                                      |
 
@@ -142,7 +154,9 @@ most specs load a copy of `dist/` in which the content script's single `attachSh
   paste past the limit is refused;
 - on a local file, the popup explains "Allow access to file URLs" and shows no pause switch;
 - no errors in any extension context (Chrome's own extension error log, the pages, popup and side
-  panel), no manifest warnings, and no network APIs in the build.
+  panel), no manifest warnings, and no network APIs in the build;
+- the package: every file of the build is used by the extension, and the install zip is one
+  `QuickNotes/` folder with the same files as the Web Store zip.
 
 The harness (`e2e/harness.ts`) picks the browser with `QN_E2E_BROWSER`:
 
@@ -155,16 +169,24 @@ The harness (`e2e/harness.ts`) picks the browser with `QN_E2E_BROWSER`:
 The `activeTab` spec clicks the toolbar button through `Extensions.triggerAction`, which only recent
 Chrome offers, so it always runs in the installed Chrome, whatever `QN_E2E_BROWSER` says; it is
 skipped only when `QN_E2E_BROWSER=chromium` limits the run to Chromium. `QN_E2E_HEADED=1` shows the
-browser, `QN_E2E_PORT` changes the demo server port (default 4324).
+browser, `QN_E2E_PORT` changes the demo server port (default 4324), and `QN_E2E_EXTENSION_DIR` runs
+the suite against another unpacked copy instead of `dist/` — for instance the `QuickNotes` folder of
+the unzipped install zip, to test exactly what people download.
 
-## Package for the Chrome Web Store
+## Package
 
-```bash
-npm run zip
-```
+Two archives with exactly the same files (the version comes from `package.json`):
 
-produces `quicknotes-v1.0.0.zip` (the version comes from `package.json`) with `manifest.json`,
-`_locales/` and `icons/` at the root of the archive. The listing text is in
+| Command               | Archive                         | For                                                                                                                   |
+| --------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `npm run zip`         | `quicknotes-v1.0.0.zip`         | The Chrome Web Store dashboard: `manifest.json`, `_locales/` and `icons/` at the root of the archive, as it requires. |
+| `npm run zip:install` | `QuickNotes-v1.0.0-install.zip` | The GitHub release, for people who install by hand: one `QuickNotes/` folder to pick in **Load unpacked**.            |
+
+Both are written by `scripts/zip.mjs` from `scripts/package.mjs`, which walks the build from
+`manifest.json` and refuses to pack it if any file is unused (a source SVG, a source map, build
+metadata) or if a file the manifest or a page names is missing. The archives are deterministic:
+the same build gives the same bytes on any platform. Attach only the install zip to a GitHub
+release; the Web Store zip goes to the dashboard. The listing text is in
 [`store-assets/description.md`](store-assets/description.md), the privacy answers in
 [`PRIVACY.md`](PRIVACY.md), and the step-by-step publishing guide (in Spanish) in
 [`docs/PUBLISHING.md`](docs/PUBLISHING.md).
@@ -220,9 +242,9 @@ src/
 tests/          Vitest unit tests
 e2e/            Playwright end-to-end tests and harness
 demo/           article.html — the demo page with hostile CSS
-scripts/        zip.mjs, demo-server.mjs, icons.mjs, store-assets/ (screenshot capture)
+scripts/        zip.mjs + package.mjs (both zips), demo-server.mjs, icons.mjs, store-assets/
 store-assets/   listing text, screenshots, promo tile, store icon
-docs/           PUBLISHING.md — Chrome Web Store publishing guide (Spanish)
+docs/           PUBLISHING.md (Web Store guide, Spanish), release-notes-v1.0.0.md (es + en)
 design/         icon.svg, the source of the icons (kept out of the package)
 public/icons/   the rendered PNGs (copied into the package)
 ```

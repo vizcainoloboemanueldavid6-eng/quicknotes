@@ -5,11 +5,31 @@ pegar en el panel ya está escrito en el repositorio:
 
 | Qué                                               | Dónde                                                           |
 | ------------------------------------------------- | --------------------------------------------------------------- |
-| Paquete para subir                                | `quicknotes-v1.0.0.zip` (se genera con `npm run zip`)           |
+| Paquete para subir a la Chrome Web Store          | `quicknotes-v1.0.0.zip` (se genera con `npm run zip`)           |
+| Descarga para la release de GitHub                | `QuickNotes-v1.0.0-install.zip` (`npm run zip:install`)         |
+| Notas de la release (español e inglés)            | [`docs/release-notes-v1.0.0.md`](release-notes-v1.0.0.md)       |
 | Título, resumen y descripción larga               | [`store-assets/description.md`](../store-assets/description.md) |
 | Icono, 3 capturas 1280×800 y promo 440×280        | carpeta [`store-assets/`](../store-assets/)                     |
 | Propósito único, justificación de permisos, datos | [`PRIVACY.md`](../PRIVACY.md), segunda mitad                    |
 | Política de privacidad (texto público)            | [`PRIVACY.md`](../PRIVACY.md), primera mitad                    |
+
+### Qué zip es para qué
+
+Los dos zips llevan **exactamente los mismos archivos** (los que usa la extensión, ni uno más); solo
+cambia cómo están colocados:
+
+- **`quicknotes-v1.0.0.zip` → Chrome Web Store.** `manifest.json` está **en la raíz del zip**, como
+  exige el panel. No lo pongas en la release de GitHub: al descomprimirlo salen muchas carpetas
+  sueltas y quien lo instala a mano no sabe cuál elegir.
+- **`QuickNotes-v1.0.0-install.zip` → release de GitHub** (instalación a mano con "Cargar
+  descomprimida"). Dentro hay **una sola carpeta, `QuickNotes/`**, con `manifest.json` dentro: es la
+  carpeta que se elige en Chrome. No lo subas a la Chrome Web Store: el panel lo rechazaría porque
+  el `manifest.json` no está en la raíz.
+
+En la release de GitHub adjunta **solo** el zip de instalación y usa como texto
+[`docs/release-notes-v1.0.0.md`](release-notes-v1.0.0.md). GitHub añade siempre, por su cuenta,
+"Source code (zip)" y "Source code (tar.gz)"; no se pueden quitar, y las notas explican que se
+ignoran.
 
 > Los textos de la ficha están en inglés porque la interfaz principal de la extensión es inglés.
 > El paquete incluye también español (`_locales/es`), y Chrome muestra el nombre y el resumen en
@@ -27,11 +47,15 @@ npm run lint
 npm test
 npm run test:e2e
 npm run zip
+npm run zip:install
 ```
 
 `npm run zip` compila y genera `quicknotes-v1.0.0.zip` en la raíz del proyecto. Ábrelo y comprueba
 que `manifest.json` está **en la raíz del zip** (no dentro de una carpeta `dist/`), junto a
-`_locales/`, `icons/`, `src/` y `assets/`. Si cambiaste textos o estilos visibles, regenera también
+`_locales/`, `icons/`, `src/` y `assets/`. `npm run zip:install` genera
+`QuickNotes-v1.0.0-install.zip`, con todo eso dentro de la carpeta `QuickNotes/`. Los dos se niegan
+a empaquetar si en `dist/` hay algún archivo que la extensión no usa, o si falta alguno que el
+manifiesto o una página nombran. Si cambiaste textos o estilos visibles, regenera también
 las imágenes con `npm run store-assets`.
 
 Antes de subirlo, pruébalo una vez a mano: `chrome://extensions` → modo de desarrollador →
@@ -173,8 +197,9 @@ Si el panel muestra el campo **Instrucciones de prueba**, pega algo así:
 
 1. Sube la versión en `package.json` (por ejemplo `1.0.1`); el `manifest.json` toma la versión de
    ahí. La Chrome Web Store exige que cada paquete tenga una versión **mayor** que la anterior.
-2. Ejecuta de nuevo `npm test`, `npm run test:e2e` y `npm run zip` (el zip se llamará
-   `quicknotes-v1.0.1.zip`).
+2. Ejecuta de nuevo `npm test`, `npm run test:e2e`, `npm run zip` y `npm run zip:install` (los zips
+   se llamarán `quicknotes-v1.0.1.zip` y `QuickNotes-v1.0.1-install.zip`). Para la release de GitHub,
+   copia `docs/release-notes-v1.0.0.md` con la versión nueva.
 3. En el panel: abre el elemento → **Paquete** → **Subir nuevo paquete** → elige el zip.
 4. Actualiza la ficha o las capturas si cambió algo visible (`npm run store-assets`).
 5. **Enviar para revisión**. Los usuarios reciben la actualización automáticamente en unas horas
