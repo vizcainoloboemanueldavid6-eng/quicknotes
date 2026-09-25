@@ -336,7 +336,7 @@ test('store images', async ({ harness }, testInfo) => {
   // --- Promo tile and store icon ----------------------------------------------------
   const promo = await harness.context.newPage();
   await promo.setViewportSize({ width: 440, height: 280 });
-  const icon = (await readFile(join(ROOT, 'public/icons/icon.svg'), 'utf8')).replace(/<title>.*?<\/title>/, '');
+  const icon = (await readFile(join(ROOT, 'design/icon.svg'), 'utf8')).replace(/<title>.*?<\/title>/, '');
   await promo.setContent(PROMO_HTML(icon));
   await promo.screenshot({ path: join(OUT, 'promo-small-440x280.png') });
   await copyFile(join(ROOT, 'public/icons/icon-128.png'), join(OUT, 'icon-128.png'));

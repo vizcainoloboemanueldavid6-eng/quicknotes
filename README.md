@@ -102,7 +102,7 @@ must look normal on it anyway.
 | `npm run demo`         | Serves `demo/` on <http://127.0.0.1:4323>.                                                     |
 | `npm run store-assets` | Builds, then captures the Chrome Web Store screenshots and promo tile into `store-assets/`.    |
 | `npm run zip`          | Builds and packs `dist/` into `quicknotes-v1.0.0.zip` with `manifest.json` at the root.        |
-| `npm run icons`        | Re-renders `public/icons/icon-{16,32,48,128}.png` from `public/icons/icon.svg`.                |
+| `npm run icons`        | Re-renders `public/icons/icon-{16,32,48,128}.png` from `design/icon.svg`.                      |
 | `npm run format`       | Prettier.                                                                                      |
 
 ### Tests
@@ -223,7 +223,8 @@ demo/           article.html — the demo page with hostile CSS
 scripts/        zip.mjs, demo-server.mjs, icons.mjs, store-assets/ (screenshot capture)
 store-assets/   listing text, screenshots, promo tile, store icon
 docs/           PUBLISHING.md — Chrome Web Store publishing guide (Spanish)
-public/icons/   icon.svg and the rendered PNGs
+design/         icon.svg, the source of the icons (kept out of the package)
+public/icons/   the rendered PNGs (copied into the package)
 ```
 
 ## Privacy
